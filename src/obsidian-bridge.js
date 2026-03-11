@@ -1,13 +1,16 @@
 /**
  * obsidian-bridge.js
- * Connects an Obsidian vault to agentflow's memory layer.
+ * Bidirectional Obsidian integration — the context layer binding specs + skills.
  *
- * Priority order for selecting hot notes:
- *   1. Notes tagged #agentflow (always included)
- *   2. Notes inside pinned folders (e.g. "Projects/MyApp")
- *   3. Most recently modified notes
+ * Obsidian is the knowledge graph that connects everything:
+ *   → Notes tagged #specflow → pulled into MEMORY/INDEX.md
+ *   → Notes tagged #spec / #decision → fed into OpenSpec proposals + SEED.md
+ *   → Notes tagged #pattern / #skill → fed into skills creation + evolution
+ *   ← Completed specs → written back as Obsidian notes
+ *   ← Skill summaries → written back as Obsidian notes
+ *   ← SEED.md changes → written back to vault
  *
- * Output: MEMORY/INDEX.md — compact, context-dense, low token.
+ * This is NOT a one-way sync anymore — it's a bidirectional context layer.
  * Never commits to git (add to .gitignore — personal vault content).
  */
 
@@ -23,9 +26,24 @@ const MEMORY_INDEX = "MEMORY/INDEX.md";
 const OBSIDIAN_CONFIG_DIR = ".obsidian";
 
 // How many notes to pull into INDEX.md
-const MAX_TAGGED = 10;   // all #agentflow notes (no cap — they're explicit)
+const MAX_TAGGED = 10;   // all #specflow notes (no cap — they're explicit)
 const MAX_RECENT = 5;    // recent notes after tagged ones
 const PREVIEW_LINES = 25; // lines per note preview
+
+// Tag routing: which tags go where
+const TAG_ROUTES = {
+  spec:        "openspec",    // → OpenSpec proposals
+  decision:    "openspec",    // → SEED.md decisions
+  architecture:"openspec",    // → SEED.md architecture
+  pattern:     "skills",      // → Skill creation/evolution
+  skill:       "skills",      // → Skill creation
+  "best-practice": "skills",  // → Skill patterns
+  convention:  "skills",      // → Skill conventions
+  specflow:   "memory",      // → MEMORY/INDEX.md
+  hot:         "memory",      // → MEMORY/INDEX.md
+  bug:         "memory",      // → MEMORY/INDEX.md
+  workflow:    "memory",      // → MEMORY/INDEX.md
+};
 
 // ─── Vault Discovery ────────────────────────────────────────────────────────
 
@@ -110,18 +128,18 @@ function parseFrontMatter(content) {
 }
 
 /**
- * Check if a note has the #agentflow tag — either inline or in front-matter.
+ * Check if a note has the #specflow tag — either inline or in front-matter.
  * @param {string} content
  * @returns {boolean}
  */
-function isAgentflowTagged(content) {
+function isSpecflowTagged(content) {
   // Inline tag anywhere in file
-  if (content.includes("#agentflow") || content.includes("#hot")) return true;
+  if (content.includes("#specflow") || content.includes("#hot")) return true;
 
   // Front-matter tags array
   const fm = parseFrontMatter(content);
   const tags = Array.isArray(fm.tags) ? fm.tags : [];
-  return tags.some((t) => t === "agentflow" || t === "hot");
+  return tags.some((t) => t === "specflow" || t === "hot");
 }
 
 // ─── Note Reader ────────────────────────────────────────────────────────────
@@ -164,7 +182,7 @@ export async function syncObsidian(vaultPath, cwd, opts = {}) {
     await fs.access(vaultPath);
   } catch {
     spinner.fail(`Vault not found: ${chalk.yellow(vaultPath)}`);
-    spinner.fail("Run `agentflow init --obsidian <path>` with the correct vault path.");
+    spinner.fail("Run `specflow init --obsidian <path>` with the correct vault path.");
     return false;
   }
 
@@ -227,7 +245,7 @@ export async function syncObsidian(vaultPath, cwd, opts = {}) {
   for (const note of notes) {
     const rel = path.relative(vaultPath, note.file).replace(/\\/g, "/");
 
-    if (isAgentflowTagged(note.content)) {
+    if (isSpecflowTagged(note.content)) {
       tagged.push({ ...note, rel });
     } else if (pinnedFolders.some((folder) => rel.startsWith(folder))) {
       pinned.push({ ...note, rel });
@@ -251,11 +269,11 @@ export async function syncObsidian(vaultPath, cwd, opts = {}) {
 path:${vaultPath}
 last-sync:${now}
 notes-total:${allFiles.length}
-tagged:#agentflow=${tagged.length} pinned=${pinned.length}
+tagged:#specflow=${tagged.length} pinned=${pinned.length}
 
 ## how-to-use
-- Tag any note \`#agentflow\` → always pulled into this index
-- Add folders to pinnedFolders in .agentflow.json → always pulled
+- Tag any note \`#specflow\` → always pulled into this index
+- Add folders to pinnedFolders in .specflow.json → always pulled
 - All other notes: top ${MAX_RECENT} most recently modified
 
 ## hot-notes
@@ -265,7 +283,7 @@ tagged:#agentflow=${tagged.length} pinned=${pinned.length}
     const fm = parseFrontMatter(note.content);
     const preview = buildPreview(note.content);
     const source = tagged.find((t) => t.file === note.file)
-      ? "tagged:#agentflow"
+      ? "tagged:#specflow"
       : pinned.find((p) => p.file === note.file)
       ? "pinned"
       : "recent";
@@ -283,8 +301,8 @@ ${preview}
 
   output += `
 ## cmds
-\`agentflow sync\`                          → refresh this file from vault
-\`agentflow sync --pin "Projects/MyApp"\`  → add a folder to always-pull list
+\`specflow sync\`                          → refresh this file from vault
+\`specflow sync --pin "Projects/MyApp"\`  → add a folder to always-pull list
 `;
 
   // Write output
@@ -296,4 +314,363 @@ ${preview}
   );
 
   return true;
+}
+
+// ─── Routed Note Extraction (Tag-based routing) ────────────────────────────
+
+/**
+ * Extract notes routed to a specific destination based on tags.
+ * This is the core of the bidirectional context layer.
+ *
+ * @param {string} vaultPath - Absolute path to vault root
+ * @param {string} destination - "openspec" | "skills" | "memory"
+ * @param {Object} opts
+ * @param {string[]} opts.pinnedFolders - Additional folders to include
+ * @returns {Promise<Object[]>} Array of { rel, content, tags, mtime }
+ */
+export async function extractRoutedNotes(vaultPath, destination, opts = {}) {
+  const allFiles = await glob("**/*.md", {
+    cwd: vaultPath,
+    ignore: ["**/.obsidian/**", "**/node_modules/**", "**/.trash/**"],
+    absolute: true,
+  });
+
+  const routed = [];
+  const relevantTags = Object.entries(TAG_ROUTES)
+    .filter(([, dest]) => dest === destination)
+    .map(([tag]) => tag);
+
+  for (const file of allFiles) {
+    try {
+      const content = await fs.readFile(file, "utf8");
+      const stat = await fs.stat(file);
+      const noteTags = extractTags(content);
+
+      const hasRelevantTag = noteTags.some((t) =>
+        relevantTags.includes(t.replace("#", ""))
+      );
+
+      if (hasRelevantTag) {
+        routed.push({
+          file,
+          rel: path.relative(vaultPath, file).replace(/\\/g, "/"),
+          content,
+          tags: noteTags,
+          mtime: stat.mtimeMs,
+        });
+      }
+    } catch {
+      // Skip unreadable files
+    }
+  }
+
+  // Sort by recency
+  routed.sort((a, b) => b.mtime - a.mtime);
+  return routed;
+}
+
+/**
+ * Get notes for OpenSpec integration.
+ * Returns #spec, #decision, #architecture tagged notes.
+ * @param {string} vaultPath
+ * @returns {Promise<{ specNotes: Object[], decisionNotes: Object[] }>}
+ */
+export async function getOpenSpecNotes(vaultPath) {
+  const notes = await extractRoutedNotes(vaultPath, "openspec");
+
+  const specNotes = notes.filter((n) =>
+    n.tags.some((t) => t === "#spec" || t === "spec")
+  );
+  const decisionNotes = notes.filter((n) =>
+    n.tags.some((t) =>
+      t === "#decision" || t === "decision" ||
+      t === "#architecture" || t === "architecture"
+    )
+  );
+
+  return { specNotes, decisionNotes };
+}
+
+/**
+ * Get notes for skills.sh integration.
+ * Returns #pattern, #skill, #best-practice, #convention tagged notes.
+ * @param {string} vaultPath
+ * @returns {Promise<Object[]>}
+ */
+export async function getSkillNotes(vaultPath) {
+  return extractRoutedNotes(vaultPath, "skills");
+}
+
+// ─── Write-Back: Project → Obsidian ────────────────────────────────────────
+
+/**
+ * Write a completed spec summary back to Obsidian vault.
+ * Creates a note in the vault's specflow folder.
+ *
+ * @param {string} vaultPath
+ * @param {Object} specData
+ * @param {string} specData.slug - Spec slug
+ * @param {string} specData.proposal - Proposal content
+ * @param {string} specData.design - Design content
+ * @param {string} specData.archiveDate - ISO date
+ */
+export async function writeSpecToVault(vaultPath, specData) {
+  const specflowDir = path.join(vaultPath, "specflow", "specs");
+  await fs.mkdir(specflowDir, { recursive: true });
+
+  const notePath = path.join(specflowDir, `${specData.slug}.md`);
+  const content = `---
+tags: [specflow, spec, archived]
+date: ${specData.archiveDate || new Date().toISOString().slice(0, 10)}
+status: archived
+---
+
+# ${specData.slug}
+
+## Summary
+${extractSummary(specData.proposal)}
+
+## Key Decisions
+${extractDecisions(specData.design)}
+
+## Patterns Learned
+${extractPatterns(specData.design)}
+
+---
+> Auto-synced from specflow spec archive
+`;
+
+  await fs.writeFile(notePath, content, "utf8");
+}
+
+/**
+ * Write skill evolution summary back to Obsidian vault.
+ *
+ * @param {string} vaultPath
+ * @param {Object} skillData
+ * @param {string} skillData.id - Skill ID
+ * @param {string} skillData.content - Skill file content
+ * @param {string[]} skillData.newPatterns - Newly added patterns
+ */
+export async function writeSkillToVault(vaultPath, skillData) {
+  const specflowDir = path.join(vaultPath, "specflow", "skills");
+  await fs.mkdir(specflowDir, { recursive: true });
+
+  const safeName = skillData.id.replace("/", "-");
+  const notePath = path.join(specflowDir, `${safeName}.md`);
+  const content = `---
+tags: [specflow, skill, pattern]
+date: ${new Date().toISOString().slice(0, 10)}
+skill-id: ${skillData.id}
+---
+
+# Skill: ${skillData.id}
+
+${skillData.content ? skillData.content.slice(0, 1000) : ""}
+
+${
+  skillData.newPatterns?.length
+    ? `## Recent Changes\n${skillData.newPatterns.map((p) => `- ${p}`).join("\n")}`
+    : ""
+}
+
+---
+> Auto-synced from specflow skill
+`;
+
+  await fs.writeFile(notePath, content, "utf8");
+}
+
+/**
+ * Write SEED.md changes back to Obsidian vault.
+ *
+ * @param {string} vaultPath
+ * @param {string} seedContent - Current SEED.md content
+ */
+export async function writeSeedToVault(vaultPath, seedContent) {
+  const specflowDir = path.join(vaultPath, "specflow");
+  await fs.mkdir(specflowDir, { recursive: true });
+
+  const notePath = path.join(specflowDir, "SEED.md");
+  const content = `---
+tags: [specflow, seed, architecture]
+date: ${new Date().toISOString().slice(0, 10)}
+---
+
+${seedContent}
+
+---
+> Auto-synced from project SEED.md — do not edit directly
+> Changes flow: project code → archived specs → SEED.md → this note
+`;
+
+  await fs.writeFile(notePath, content, "utf8");
+}
+
+/**
+ * Full bidirectional sync.
+ * 1. Pull: vault → MEMORY/INDEX.md (existing behavior)
+ * 2. Route: tagged notes → OpenSpec / skills destinations
+ * 3. Push: SEED.md + archived specs + skills → vault
+ *
+ * @param {string} vaultPath
+ * @param {string} cwd
+ * @param {Object} opts
+ * @returns {Promise<Object>} Sync results with routed notes
+ */
+export async function bidirectionalSync(vaultPath, cwd, opts = {}) {
+  const spinner = ora("Bidirectional Obsidian sync...").start();
+  const results = {
+    pulled: { tagged: 0, pinned: 0, recent: 0 },
+    routed: { openspec: 0, skills: 0, memory: 0 },
+    pushed: { specs: 0, skills: 0, seed: false },
+    specNotes: [],
+    decisionNotes: [],
+    skillNotes: [],
+  };
+
+  // 1. Pull: Standard sync → MEMORY/INDEX.md
+  spinner.text = "Pulling from vault → MEMORY/INDEX.md...";
+  await syncObsidian(vaultPath, cwd, opts);
+
+  // 2. Route: Extract tagged notes for each destination
+  spinner.text = "Routing tagged notes...";
+
+  const { specNotes, decisionNotes } = await getOpenSpecNotes(vaultPath);
+  results.specNotes = specNotes;
+  results.decisionNotes = decisionNotes;
+  results.routed.openspec = specNotes.length + decisionNotes.length;
+
+  const skillNotes = await getSkillNotes(vaultPath);
+  results.skillNotes = skillNotes;
+  results.routed.skills = skillNotes.length;
+
+  // 3. Push: Write back to vault
+  spinner.text = "Pushing project state → vault...";
+
+  // Push SEED.md to vault
+  try {
+    const seedContent = await fs.readFile(path.join(cwd, "SPECS", "SEED.md"), "utf8");
+    await writeSeedToVault(vaultPath, seedContent);
+    results.pushed.seed = true;
+  } catch {
+    // No SEED.md yet
+  }
+
+  // Push archived specs to vault
+  try {
+    const archiveDir = path.join(cwd, "SPECS", "archive");
+    const archives = await fs.readdir(archiveDir, { withFileTypes: true });
+    for (const entry of archives) {
+      if (!entry.isDirectory()) continue;
+      const proposal = await safeRead(path.join(archiveDir, entry.name, "proposal.md"));
+      const design = await safeRead(path.join(archiveDir, entry.name, "design.md"));
+      if (proposal || design) {
+        await writeSpecToVault(vaultPath, {
+          slug: entry.name,
+          proposal: proposal || "",
+          design: design || "",
+          archiveDate: entry.name.slice(0, 10),
+        });
+        results.pushed.specs++;
+      }
+    }
+  } catch {
+    // No archives yet
+  }
+
+  spinner.succeed(
+    `Bidirectional sync complete · ` +
+    `Routed: ${results.routed.openspec} spec, ${results.routed.skills} skill · ` +
+    `Pushed: ${results.pushed.specs} specs, seed:${results.pushed.seed ? "✓" : "—"}`
+  );
+
+  return results;
+}
+
+// ─── Tag Extraction ─────────────────────────────────────────────────────────
+
+/**
+ * Extract all tags from a note (front-matter + inline).
+ * @param {string} content
+ * @returns {string[]}
+ */
+function extractTags(content) {
+  const tags = new Set();
+
+  // Front-matter tags
+  const fm = parseFrontMatter(content);
+  if (Array.isArray(fm.tags)) {
+    for (const t of fm.tags) tags.add(t.replace("#", ""));
+  }
+
+  // Inline tags: #word (not inside code blocks)
+  const inlineMatches = content.match(/#[a-zA-Z][\w-]*/g) || [];
+  for (const tag of inlineMatches) {
+    tags.add(tag.replace("#", ""));
+  }
+
+  return [...tags];
+}
+
+// ─── Write-back Helpers ─────────────────────────────────────────────────────
+
+function extractSummary(proposal) {
+  if (!proposal) return "No summary available.";
+  const lines = proposal.split("\n");
+  const solutionIdx = lines.findIndex((l) => l.startsWith("## solution"));
+  if (solutionIdx === -1) return lines.slice(0, 5).join("\n");
+
+  const endIdx = lines.findIndex((l, i) => i > solutionIdx && l.startsWith("## "));
+  return lines
+    .slice(solutionIdx + 1, endIdx > 0 ? endIdx : solutionIdx + 10)
+    .filter((l) => l.trim() && !l.startsWith("<!--"))
+    .join("\n")
+    .trim() || "No summary filled.";
+}
+
+function extractDecisions(design) {
+  if (!design) return "No decisions recorded.";
+  const lines = design.split("\n");
+  const decisions = [];
+
+  let inConstraints = false;
+  for (const line of lines) {
+    if (line.startsWith("## ")) {
+      inConstraints = line.toLowerCase().includes("constraint") || line.toLowerCase().includes("decision");
+    }
+    if (inConstraints && line.startsWith("- ")) {
+      decisions.push(line);
+    }
+  }
+
+  return decisions.length > 0 ? decisions.join("\n") : "No decisions recorded.";
+}
+
+function extractPatterns(design) {
+  if (!design) return "No patterns identified.";
+  const lines = design.split("\n");
+  const patterns = [];
+
+  let inPatterns = false;
+  for (const line of lines) {
+    if (line.startsWith("## ")) {
+      inPatterns =
+        line.toLowerCase().includes("pattern") ||
+        line.toLowerCase().includes("component");
+    }
+    if (inPatterns && line.startsWith("- ")) {
+      patterns.push(line);
+    }
+  }
+
+  return patterns.length > 0 ? patterns.join("\n") : "No patterns identified.";
+}
+
+async function safeRead(filePath) {
+  try {
+    return await fs.readFile(filePath, "utf8");
+  } catch {
+    return null;
+  }
 }

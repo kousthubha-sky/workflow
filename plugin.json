@@ -1,0 +1,37 @@
+{
+  "name": "specflow",
+  "version": "0.2.0",
+  "displayName": "Specflow",
+  "description": "Universal AI workflow bootstrap plugin",
+  "type": "ai-context-plugin",
+  "main": "./plugin.mjs",
+  "capabilities": [
+    "stack-detection",
+    "context-generation",
+    "agent-integration",
+    "skill-mapping",
+    "obsidian-sync"
+  ],
+  "supportedAgents": [
+    "claude-code",
+    "cursor",
+    "windsurf",
+    "copilot",
+    "aider",
+    "continue-dev",
+    "opencode"
+  ],
+  "exports": {
+    "default": "./plugin.mjs",
+    "api": "./plugin.mjs"
+  },
+  "activation": {
+    "onCommand": ["specflow.init", "specflow.detect", "specflow.update"],
+    "onFileChange": ["package.json", "pyproject.toml", "Cargo.toml", "go.mod"],
+    "onStart": true
+  },
+  "documentation": {
+    "url": "https://github.com/kousthubha-sky/workflow#plugin-api",
+    "keywords": ["ai-agent", "context", "workflow", "skills", "stack-detection"]
+  }
+}

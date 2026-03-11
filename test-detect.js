@@ -18,7 +18,7 @@ const fail = (msg, got, want) =>
   console.log(chalk.red("✗ FAIL") + `  ${msg}\n       got:  ${JSON.stringify(got)}\n       want: ${JSON.stringify(want)}`);
 
 async function withTempProject(deps, fn) {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "agentflow-test-"));
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "specflow-test-"));
   await fs.writeFile(
     path.join(tmpDir, "package.json"),
     JSON.stringify({ dependencies: deps, devDependencies: {} })
@@ -31,7 +31,7 @@ async function withTempProject(deps, fn) {
 }
 
 async function run() {
-  console.log(chalk.bold("\nagentflow · detect-stack smoke tests\n"));
+  console.log(chalk.bold("\nspecflow · detect-stack smoke tests\n"));
 
   // ── Test 1: Next.js + Supabase + Stripe ────────────────────────────────
   await withTempProject(
@@ -78,8 +78,8 @@ async function run() {
   {
     const { keys } = await detectStack(process.cwd());
     keys.length === 0
-      ? pass("agentflow own package.json → no stack (correct)")
-      : fail("agentflow own package.json should return empty stack", keys, []);
+      ? pass("specflow own package.json → no stack (correct)")
+      : fail("specflow own package.json should return empty stack", keys, []);
   }
 
   // ── Test 6: tRPC detection ─────────────────────────────────────────────

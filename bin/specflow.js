@@ -1,17 +1,34 @@
 #!/usr/bin/env node
 import { program } from "commander";
 import { init } from "../src/init.js";
-import { syncObsidian, discoverVaults } from "../src/obsidian-bridge.js";
+import {
+  syncObsidian,
+  discoverVaults,
+  bidirectionalSync,
+} from "../src/obsidian-bridge.js";
 import { updateAgent } from "../src/agent-writer.js";
-import { addSkill } from "../src/skills-loader.js";
-import { runSpec, archiveSpec } from "../src/spec-runner.js";
+import {
+  addSkill,
+  searchSkills,
+  createSkillFromProject,
+  evolveSkill,
+  updateSkills,
+  listInstalledSkills,
+} from "../src/skills-loader.js";
+import {
+  runSpec,
+  archiveSpec,
+  validateSpecCmd,
+  listSpecs,
+  seedCmd,
+} from "../src/spec-runner.js";
 import { readConfig, writeConfig } from "../src/config.js";
 import chalk from "chalk";
 
 program
-  .name("agentflow")
-  .description("Universal AI workflow bootstrap")
-  .version("0.1.0");
+  .name("specflow")
+  .description("Universal AI workflow bootstrap — OpenSpec + Skills.sh + Obsidian")
+  .version("0.2.0");
 
 // ── init ──────────────────────────────────────────────────────────────────
 program
@@ -40,7 +57,7 @@ program
 
     const cfg = await readConfig();
     if (!cfg.stack?.length) {
-      console.error(chalk.red("No stack config found. Run: agentflow init first."));
+      console.error(chalk.red("No stack config found. Run: specflow init first."));
       process.exit(1);
     }
 
@@ -83,20 +100,21 @@ program
 // ── sync ──────────────────────────────────────────────────────────────────
 program
   .command("sync")
-  .description("Pull Obsidian vault → MEMORY/INDEX.md")
+  .description("Bidirectional Obsidian sync: vault ↔ project (specs, skills, SEED)")
   .option("--pin <folder>", "Add a vault folder to always-pull list")
   .option("--discover", "Auto-discover Obsidian vaults on this machine")
+  .option("--one-way", "Pull from vault only (legacy behavior)")
   .action(async (opts) => {
     if (opts.discover) {
       const vaults = await discoverVaults();
       if (!vaults.length) {
         console.log(chalk.yellow("No Obsidian vaults found automatically."));
-        console.log(chalk.dim("Provide path manually: agentflow init --obsidian <path>"));
+        console.log(chalk.dim("Provide path manually: specflow init --obsidian <path>"));
       } else {
         console.log(chalk.bold("Found vaults:"));
         for (const v of vaults)
           console.log("  " + chalk.green(v.name) + "  " + chalk.dim(v.path));
-        console.log(chalk.dim("\nUse: agentflow init --obsidian <path>"));
+        console.log(chalk.dim("\nUse: specflow init --obsidian <path>"));
       }
       return;
     }
@@ -104,7 +122,7 @@ program
     const cfg = await readConfig();
     if (!cfg.obsidianPath) {
       console.error(chalk.red("No vault configured."));
-      console.log(chalk.dim("Run: agentflow init --obsidian <path>  or  agentflow sync --discover"));
+      console.log(chalk.dim("Run: specflow init --obsidian <path>  or  specflow sync --discover"));
       process.exit(1);
     }
 
@@ -118,10 +136,20 @@ program
       }
     }
 
-    const synced = await syncObsidian(cfg.obsidianPath, process.cwd(), {
-      pinnedFolders: cfg.pinnedFolders ?? [],
-    });
-    if (synced) {
+    if (opts.oneWay) {
+      // Legacy one-way sync
+      const synced = await syncObsidian(cfg.obsidianPath, process.cwd(), {
+        pinnedFolders: cfg.pinnedFolders ?? [],
+      });
+      if (synced) {
+        cfg.lastSync = new Date().toISOString();
+        await writeConfig(cfg);
+      }
+    } else {
+      // Bidirectional sync (default)
+      const result = await bidirectionalSync(cfg.obsidianPath, process.cwd(), {
+        pinnedFolders: cfg.pinnedFolders ?? [],
+      });
       cfg.lastSync = new Date().toISOString();
       await writeConfig(cfg);
     }
@@ -130,12 +158,25 @@ program
 // ── spec ──────────────────────────────────────────────────────────────────
 program
   .command("spec [feature]")
-  .description('Propose a feature spec: agentflow spec "add payments"')
+  .description('OpenSpec lifecycle: propose, validate, archive, list, seed')
   .option("--archive <slug>", "Archive a completed spec by slug")
+  .option("--validate <slug>", "Validate a spec against SEED + generation-spec")
+  .option("--list", "List active specs with progress")
+  .option("--seed", "Regenerate SEED.md from archived spec patterns")
   .action(async (feature, opts) => {
-    if (opts.archive)  await archiveSpec(opts.archive);
-    else if (feature)  await runSpec(feature);
-    else               console.error(chalk.red('Usage: agentflow spec "<feature>"  |  agentflow spec --archive <slug>'));
+    if (opts.archive)       await archiveSpec(opts.archive);
+    else if (opts.validate) await validateSpecCmd(opts.validate);
+    else if (opts.list)     await listSpecs();
+    else if (opts.seed)     await seedCmd();
+    else if (feature)       await runSpec(feature);
+    else {
+      console.log(chalk.bold("OpenSpec commands:"));
+      console.log(chalk.dim('  specflow spec "feature name"  — propose a new spec'));
+      console.log(chalk.dim("  specflow spec --validate <slug>  — validate a spec"));
+      console.log(chalk.dim("  specflow spec --archive <slug>   — archive + evolve SEED"));
+      console.log(chalk.dim("  specflow spec --list             — list active specs"));
+      console.log(chalk.dim("  specflow spec --seed             — regenerate SEED.md"));
+    }
   });
 
 // ── add-skill ─────────────────────────────────────────────────────────────
@@ -145,6 +186,55 @@ program
   .action(async (skill) => {
     const cfg = await readConfig();
     await addSkill(skill, process.cwd(), cfg);
+  });
+
+// ── skill ─────────────────────────────────────────────────────────────────
+program
+  .command("skill")
+  .description("Skills.sh lifecycle: search, create, evolve, update, list")
+  .option("--search <query>", "Search skills.sh registry for skills")
+  .option("--create <id>", "Create a skill from project patterns + Obsidian")
+  .option("--evolve <id>", "Evolve an existing skill with new patterns")
+  .option("--update", "Update all installed skills via skills.sh")
+  .option("--list", "List installed skills with source/version info")
+  .action(async (opts) => {
+    const cwd = process.cwd();
+    if (opts.search) {
+      const results = await searchSkills(opts.search);
+      if (results.length === 0) {
+        console.log(chalk.dim("No skills found. Try a different query."));
+      } else {
+        console.log(chalk.bold(`Found ${results.length} skills:\n`));
+        for (const s of results) {
+          console.log(`  ${chalk.cyan(s.id)} — ${s.description || "no description"}`);
+        }
+      }
+    } else if (opts.create) {
+      await createSkillFromProject(opts.create, cwd);
+    } else if (opts.evolve) {
+      await evolveSkill(opts.evolve, cwd);
+    } else if (opts.update) {
+      await updateSkills(cwd);
+    } else if (opts.list) {
+      const installed = await listInstalledSkills(cwd);
+      if (installed.length === 0) {
+        console.log(chalk.dim("No skills installed. Run: specflow add-skill <id>"));
+      } else {
+        console.log(chalk.bold(`${installed.length} installed skills:\n`));
+        for (const s of installed) {
+          console.log(
+            `  ${chalk.cyan(s.id)} — ${s.source} ${chalk.dim(s.version || "")}`
+          );
+        }
+      }
+    } else {
+      console.log(chalk.bold("Skills.sh commands:"));
+      console.log(chalk.dim("  specflow skill --search <query>  — search registry"));
+      console.log(chalk.dim("  specflow skill --create <id>     — create from project"));
+      console.log(chalk.dim("  specflow skill --evolve <id>     — evolve with new patterns"));
+      console.log(chalk.dim("  specflow skill --update          — update all installed"));
+      console.log(chalk.dim("  specflow skill --list            — list installed skills"));
+    }
   });
 
 program.parse();

@@ -1,0 +1,383 @@
+{
+  "$schema": "https://specflow.dev/generation-spec.schema.json",
+  "version": "1.0.0",
+  "description": "Stable specification for specflow context generation. This spec is the source of truth — AI adapts to it, not vice versa. Ensures consistency across CLI tools and model versions.",
+  
+  "generation": {
+    "mode": "cli-native-ai",
+    "description": "Use the CLI tool's native AI (Claude Code's Claude, Cursor's Claude, etc.) to generate context",
+    "aiModel": "auto-detect",
+    "temperature": 0,
+    "systemPrompt": "You are an specflow context generator. Your job is to analyze project code and generate spec-compliant context files. Follow the generation-spec.json schema exactly. Output must be valid JSON and markdown."
+  },
+
+  "files": {
+    "agent_context": {
+      "path": "CLAUDE.md",
+      "alternateFor": ["claude-code"],
+      "purpose": "Ultra-compressed context block for the AI agent",
+      "maxTokens": 300,
+      "structure": {
+        "header": "# specflow-context",
+        "sections": [
+          {
+            "id": "stack-analysis",
+            "title": "Project Stack",
+            "maxLines": 3,
+            "required": true,
+            "format": "> tech: <list from detect-stack>",
+            "example": "> tech: nextjs|prisma|clerk|stripe"
+          },
+          {
+            "id": "critical-patterns",
+            "title": "Critical Patterns (from SEED.md)",
+            "maxLines": 5,
+            "required": true,
+            "format": "bullet list of must-follow patterns",
+            "example": "- All database queries use Prisma\n- Auth routes protected with Clerk\n- API responses wrapped in standardized envelope"
+          },
+          {
+            "id": "constraints",
+            "title": "Hard Constraints",
+            "maxLines": 4,
+            "required": true,
+            "format": "bullet list of immutable rules",
+            "example": "- Do not modify migration files\n- All env vars prefixed with NEXT_PUBLIC_\n- Database schema changes require PR approval"
+          },
+          {
+            "id": "active-work",
+            "title": "Current Active Spec",
+            "maxLines": 2,
+            "required": false,
+            "format": "reference to SPECS/active/<slug>",
+            "example": "See: SPECS/active/add-payments/\nRead before implementing tasks"
+          },
+          {
+            "id": "memory-index",
+            "title": "Memory & Context",
+            "maxLines": 2,
+            "required": false,
+            "format": "reference to MEMORY/INDEX.md",
+            "example": "Last sync: 2026-03-11\nVault: /Users/me/Obsidian Vault"
+          }
+        ]
+      }
+    },
+
+    "seed_spec": {
+      "path": "SPECS/SEED.md",
+      "purpose": "Architectural spec: patterns, anti-patterns, decisions",
+      "maxTokens": 1500,
+      "structure": {
+        "header": "# SEED: Architectural Specification",
+        "sections": [
+          {
+            "id": "project-overview",
+            "title": "Project Overview",
+            "required": true,
+            "subsections": [
+              { "name": "Purpose", "maxLines": 3 },
+              { "name": "Stack", "maxLines": 2 },
+              { "name": "Key Constraints", "maxLines": 3 }
+            ]
+          },
+          {
+            "id": "patterns",
+            "title": "Must-Follow Patterns",
+            "required": true,
+            "subsections": [
+              { "name": "Data Layer (Database)", "maxLines": 5, "example": "- Schema defined in prisma/schema.prisma\n- Migrations auto-generated\n- All queries typed via Prisma SDK" },
+              { "name": "Auth Layer", "maxLines": 5, "example": "- Use Clerk for user management\n- Protect routes with middleware\n- Sync user roles to database" },
+              { "name": "API Layer", "maxLines": 5, "example": "- Use server actions for mutations\n- REST endpoints for public APIs\n- Validate input with Zod schemas" },
+              { "name": "UI Layer", "maxLines": 5, "example": "- Build with shadcn components\n- Style with Tailwind classes\n- Use React hooks for state" },
+              { "name": "Testing", "maxLines": 3, "example": "- Unit tests with Vitest\n- E2E tests with Playwright\n- >80% coverage required" }
+            ]
+          },
+          {
+            "id": "anti-patterns",
+            "title": "Forbidden (Anti-Patterns)",
+            "required": true,
+            "subsections": [
+              { "name": "Data Layer", "maxLines": 3, "example": "- Direct SQL queries (always use ORM)\n- Manual migration files\n- Dangling foreign keys" },
+              { "name": "Auth", "maxLines": 3, "example": "- Never store passwords in code\n- Don't hardcode API keys\n- No direct role checks without audit logs" },
+              { "name": "API", "maxLines": 3, "example": "- Unvalidated user input\n- Responses without error wrapping\n- No CORS protection" },
+              { "name": "UI", "maxLines": 3, "example": "- Mixing Tailwind + CSS modules\n- Inline styles in components\n- Uncontrolled form inputs in React" }
+            ]
+          },
+          {
+            "id": "decisions",
+            "title": "Key Architectural Decisions",
+            "required": true,
+            "format": "ADR-style entries with context & rationale",
+            "subsections": [
+              { "name": "Tech Choices", "maxLines": 10, "example": "Why Next.js? Why Prisma? Why Clerk?" },
+              { "name": "Trade-offs Made", "maxLines": 8, "example": "Performance vs. flexibility decisions" }
+            ]
+          },
+          {
+            "id": "file-structure",
+            "title": "Expected File Structure",
+            "required": true,
+            "format": "tree view with explanation of each directory",
+            "maxLines": 20
+          },
+          {
+            "id": "onboarding",
+            "title": "Getting Started",
+            "required": false,
+            "subsections": [
+              { "name": "Setup", "maxLines": 5, "example": "npm install\nnpm run db:push\nnpm run dev" },
+              { "name": "First Task", "maxLines": 5, "example": "Read AGENT_CONTEXT.md\nCheck active spec in SPECS/active/\nConsult MEMORY/INDEX.md for context" }
+            ]
+          }
+        ]
+      }
+    },
+
+    "memory_index": {
+      "path": "MEMORY/INDEX.md",
+      "purpose": "Hot notes synced from Obsidian vault",
+      "maxTokens": 500,
+      "structure": {
+        "header": "# Project Memory Index",
+        "sections": [
+          {
+            "id": "Recent",
+            "title": "Recent Notes (Last 7 days)",
+            "required": false,
+            "format": "list of note titles + brief excerpt",
+            "maxLines": 10
+          },
+          {
+            "id": "hotTopics",
+            "title": "Hot Topics",
+            "required": false,
+            "format": "tags from Obsidian: #specflow, #decision, #bug, #pattern",
+            "maxLines": 15
+          },
+          {
+            "id": "decisions",
+            "title": "Decisions & Rationale",
+            "required": false,
+            "format": "key decisions made, linked to ADRs",
+            "maxLines": 10
+          },
+          {
+            "id": "activeIssues",
+            "title": "Active Issues & Known Limitations",
+            "required": false,
+            "format": "issues the AI should know about",
+            "maxLines": 8
+          },
+          {
+            "id": "syncTimestamp",
+            "title": "Sync Information",
+            "required": true,
+            "format": "last sync time, vault path, tag filter",
+            "example": "- Last sync: 2026-03-11 14:23 UTC\n- Vault: /Users/me/Obsidian Vault\n- Tags: #specflow, #workflow, #decision"
+          }
+        ]
+      }
+    }
+  },
+
+  "analysis": {
+    "codeAnalysis": {
+      "enabled": true,
+      "method": "cli-native-ai",
+      "description": "Use CLI's AI to analyze actual project code",
+      "filePatterns": {
+        "nextjs": ["**/app/**/*.tsx", "**/lib/**/*.ts", "**/*middleware*.ts"],
+        "prisma": ["**/prisma/schema.prisma", "**/lib/*prisma*.ts"],
+        "clerk": ["**/middleware.ts", "**/*auth*.ts", "**/app/**/*route*.ts"],
+        "api": ["**/api/**/*.ts", "**/*route*.ts", "**/server/**/*.ts"]
+      },
+      "maxFilesPerCategory": 5,
+      "maxCharsPerFile": 2000
+    },
+    "stackDetection": {
+      "method": "package.json + pyproject.toml + Cargo.toml + go.mod",
+      "description": "Detect stack automatically",
+      "outputFormat": "array of stack keys"
+    }
+  },
+
+  "validation": {
+    "rules": [
+      {
+        "id": "token-compliance",
+        "description": "Each file must stay within token limits",
+        "agent_context": "max 300 tokens",
+        "seed_spec": "max 1500 tokens",
+        "memory_index": "max 500 tokens"
+      },
+      {
+        "id": "required-sections",
+        "description": "All required sections must be present",
+        "checks": [
+          "agent_context.stack-analysis exists",
+          "agent_context.critical-patterns exists",
+          "agent_context.constraints exists",
+          "seed_spec.patterns exists",
+          "seed_spec.anti-patterns exists"
+        ]
+      },
+      {
+        "id": "format-compliance",
+        "description": "Output must follow exact format specified",
+        "checks": [
+          "Markdown headers use specified format",
+          "Code blocks properly delimited",
+          "Lists use bullet format",
+          "Links use relative paths"
+        ]
+      },
+      {
+        "id": "consistency",
+        "description": "Cross-file references must be valid",
+        "checks": [
+          "SEED.md patterns referenced in CLAUDE.md",
+          "SPECS/ paths match active specs",
+          "MEMORY/ paths exist if referenced"
+        ]
+      }
+    ]
+  },
+
+  "aiInstructions": {
+    "forCliAI": {
+      "description": "Instructions that CLI's native AI should follow when generating context",
+      "systemPrompt": {
+        "role": "You are specflow's context generator.",
+        "task": "Analyze the project and generate three spec-compliant markdown files.",
+        "constraints": [
+          "Generate CLAUDE.md with max 300 tokens",
+          "Generate SPECS/SEED.md with max 1500 tokens",
+          "Generate MEMORY/INDEX.md with max 500 tokens",
+          "Follow the sections structure exactly as defined in generation-spec.json",
+          "Use the project's actual code patterns, not generic advice",
+          "Make output actionable and specific to THIS project",
+          "Use hard constraints, not suggestions"
+        ],
+        "sources": [
+          "Analyze package.json to detect stack",
+          "Scan actual project code files",
+          "Infer patterns from code organization",
+          "Extract existing decisions from comments/docs",
+          "Identify anti-patterns from common mistakes"
+        ]
+      },
+      "prompts": {
+        "initial": "Analyze the project structure and code to generate specflow context files.",
+        "codeAnalysis": "Read these code files and identify the actual patterns being used.",
+        "patternExtraction": "Based on the code, what patterns MUST new code follow?",
+        "constraintIdentification": "What are the hard constraints that the AI must never violate?",
+        "antiPatternExtraction": "What mistakes or patterns should be forbidden?"
+      }
+    }
+  },
+
+  "integrations": {
+    "openspec": {
+      "description": "openspec.dev integration — the spec lifecycle engine",
+      "cli": "npx openspec",
+      "fallback": "local file-based engine when CLI unavailable",
+      "lifecycle": {
+        "init": "Initialize SPECS/ folder structure with SEED.md",
+        "propose": "Create a new feature spec under SPECS/active/<slug>/",
+        "validate": "Validate spec against SEED constraints + generation-spec",
+        "archive": "Move completed spec → SPECS/archived/, extract patterns, evolve SEED"
+      },
+      "specStructure": {
+        "activePath": "SPECS/active/<slug>/SPEC.md",
+        "archivedPath": "SPECS/archived/<slug>/SPEC.md",
+        "seedPath": "SPECS/SEED.md",
+        "requiredFrontmatter": ["status", "created", "slug"],
+        "statuses": ["draft", "active", "review", "done", "archived"]
+      },
+      "obsidianBridge": {
+        "description": "Obsidian notes tagged #spec or #decision feed into spec proposals as context",
+        "tagRoutes": {
+          "spec": "openspec",
+          "decision": "openspec",
+          "architecture": "openspec"
+        }
+      }
+    },
+    "skills": {
+      "description": "skills.sh integration — dynamic skill discovery and evolution",
+      "cli": "npx skills",
+      "fallback": "builtin skills from config/builtin-skills/ when CLI unavailable",
+      "lifecycle": {
+        "search": "Search skills.sh registry for relevant skills",
+        "discover": "Auto-discover skills matching detected stack",
+        "install": "Install skills with version tracking in .skills/.manifest.json",
+        "update": "Update installed skills to latest versions",
+        "create": "Create skills from project patterns + Obsidian notes",
+        "evolve": "Evolve existing skills with new patterns from code + specs"
+      },
+      "manifestPath": ".skills/.manifest.json",
+      "manifestSchema": {
+        "skills": {
+          "<skillId>": {
+            "id": "string",
+            "version": "string",
+            "source": "registry | builtin | local",
+            "installedAt": "ISO date",
+            "updatedAt": "ISO date"
+          }
+        },
+        "lastSync": "ISO date"
+      },
+      "obsidianBridge": {
+        "description": "Obsidian notes tagged #pattern, #skill, #best-practice feed into skill creation/evolution",
+        "tagRoutes": {
+          "pattern": "skills",
+          "skill": "skills",
+          "best-practice": "skills",
+          "convention": "skills"
+        }
+      }
+    },
+    "obsidian": {
+      "description": "Obsidian vault as bidirectional context layer binding specs + skills",
+      "syncMode": "bidirectional",
+      "tagRoutes": {
+        "spec": "openspec",
+        "decision": "openspec",
+        "architecture": "openspec",
+        "pattern": "skills",
+        "skill": "skills",
+        "best-practice": "skills",
+        "convention": "skills",
+        "specflow": "memory",
+        "hot": "memory",
+        "bug": "memory",
+        "workflow": "memory"
+      },
+      "pullBehavior": "Extract tagged notes from vault → route to openspec / skills / memory",
+      "pushBehavior": "Write-back: archived specs → vault, evolved skills → vault, SEED updates → vault",
+      "writebackFormats": {
+        "spec": "Markdown with YAML frontmatter (status, slug, archived date)",
+        "skill": "Markdown with YAML frontmatter (id, version, source)",
+        "seed": "Markdown snapshot of SEED.md with sync timestamp"
+      }
+    }
+  },
+
+  "stability": {
+    "description": "How this spec ensures stability across AI model & CLI changes",
+    "benefits": [
+      "Spec is source of truth, not AI behavior",
+      "Generated files follow predictable structure",
+      "Switching Claude to GPT-4? Spec still works",
+      "Switching Claude Code to Cursor? Spec still works",
+      "Old AI model versions? New model versions? Spec handles both",
+      "Project can review & approve generated specs manually",
+      "Three-tool trinity (OpenSpec + Skills.sh + Obsidian) creates self-reinforcing context",
+      "Obsidian notes survive tool/AI changes as human-readable markdown"
+    ],
+    "versionStrategy": "Semantic versioning. Major = breaking schema changes. Minor = new sections. Patch = clarifications.",
+    "upgradeProcess": "Regenerate context files with new spec version, review, approve, commit."
+  }
+}

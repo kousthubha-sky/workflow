@@ -1,10 +1,10 @@
 {
-  "name": "agentflow",
-  "version": "0.1.0",
+  "name": "@kousthubha/specflow",
+  "version": "0.2.0",
   "description": "Universal AI workflow bootstrap — one command, any stack, any agent.",
   "type": "module",
   "bin": {
-    "agentflow": "./bin/agentflow.js"
+    "specflow": "./bin/specflow.js"
   },
   "files": [
     "bin/",
@@ -12,8 +12,18 @@
     "config/skills-map.json",
     "config/agent-map.json",
     "config/builtin-skills/",
+    "plugin.mjs",
+    "plugin.json",
     "README.md"
   ],
+  "exports": {
+    ".": {
+      "import": "./bin/specflow.js"
+    },
+    "./plugin": {
+      "import": "./plugin.mjs"
+    }
+  },
   "scripts": {
     "test": "node test-detect.js"
   },
@@ -31,14 +41,14 @@
     "node": ">=18.0.0"
   },
   "keywords": [
-    "ai", "workflow", "claude-code", "copilot", "cursor",
+    "ai", "workflow", "claude-code", "copilot", "cursor", "windsurf",
     "opencode", "skills", "openspec", "obsidian", "context",
-    "developer-tools", "cli", "sdd", "agentflow"
+    "developer-tools", "cli", "sdd", "specflow", "plugin", "ai-context-plugin"
   ],
   "homepage": "https://github.com/kousthubha-sky/workflow#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kousthubha-sky/workflow.git"
+    "url": "git+https://github.com/kousthubha-sky/workflow.git"
   },
   "bugs": {
     "url": "https://github.com/kousthubha-sky/workflow/issues"
@@ -46,5 +56,10 @@
   "license": "MIT",
   "publishConfig": {
     "access": "public"
+  },
+  "plugin": {
+    "manifest": "./plugin.json",
+    "api": "./plugin.mjs",
+    "type": "ai-context-plugin"
   }
 }

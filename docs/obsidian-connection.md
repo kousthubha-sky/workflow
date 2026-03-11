@@ -1,14 +1,14 @@
-# Connecting Obsidian to agentflow
+# Connecting Obsidian to specflow
 
 ## How it works
 
-agentflow reads your Obsidian vault directly from disk — no plugin needed.  
+specflow reads your Obsidian vault directly from disk — no plugin needed.  
 It picks the most relevant notes and writes them into `MEMORY/INDEX.md`,  
 which your AI agent reads at the start of every session.
 
 ```
 Obsidian vault (disk)
-        ↓ agentflow sync
+        ↓ specflow sync
 MEMORY/INDEX.md   ← agent reads this
 ```
 
@@ -18,9 +18,9 @@ MEMORY/INDEX.md   ← agent reads this
 
 ### Auto-discover (easiest)
 ```bash
-agentflow sync --discover
+specflow sync --discover
 ```
-agentflow reads Obsidian's own config to list all your vaults:
+specflow reads Obsidian's own config to list all your vaults:
 ```
 Found vaults:
   MyVault     /Users/sky/Documents/MyVault
@@ -42,10 +42,10 @@ The vault root is the folder that contains `.obsidian/` (hidden folder).
 ## Step 2 — Connect it
 
 ```bash
-agentflow init --obsidian "C:/Users/sky/obsidian/MyVault"
+specflow init --obsidian "C:/Users/sky/obsidian/MyVault"
 ```
 
-Or if you already ran `agentflow init`, edit `.agentflow.json`:
+Or if you already ran `specflow init`, edit `.specflow.json`:
 ```json
 {
   "obsidianPath": "C:/Users/sky/obsidian/MyVault"
@@ -53,27 +53,27 @@ Or if you already ran `agentflow init`, edit `.agentflow.json`:
 ```
 Then run:
 ```bash
-agentflow sync
+specflow sync
 ```
 
 ---
 
 ## Step 3 — Tag notes to pin them
 
-Any note tagged `#agentflow` is **always** pulled into `MEMORY/INDEX.md`,  
+Any note tagged `#specflow` is **always** pulled into `MEMORY/INDEX.md`,  
 regardless of how recently it was modified.
 
 ### How to tag in Obsidian
 
 **Option A — inline tag** (anywhere in the note body):
 ```
-#agentflow
+#specflow
 ```
 
 **Option B — front-matter** (top of file):
 ```yaml
 ---
-tags: [agentflow]
+tags: [specflow]
 ---
 ```
 
@@ -93,11 +93,11 @@ tags: [agentflow]
 
 If a folder has many relevant notes, pin the whole folder:
 ```bash
-agentflow sync --pin "Projects/OneRouter"
-agentflow sync --pin "Architecture"
+specflow sync --pin "Projects/OneRouter"
+specflow sync --pin "Architecture"
 ```
 
-This persists to `.agentflow.json`:
+This persists to `.specflow.json`:
 ```json
 {
   "pinnedFolders": ["Projects/OneRouter", "Architecture"]
@@ -111,7 +111,7 @@ All notes inside pinned folders are always pulled in.
 ## Syncing
 
 ```bash
-agentflow sync          # re-pull vault → MEMORY/INDEX.md
+specflow sync          # re-pull vault → MEMORY/INDEX.md
 ```
 
 Run this:
@@ -121,13 +121,13 @@ Run this:
 
 ### Auto-sync tip (optional)
 
-Add to your shell profile to auto-sync on `cd` into any agentflow project:
+Add to your shell profile to auto-sync on `cd` into any specflow project:
 ```bash
 # ~/.zshrc or ~/.bashrc
 function cd() {
   builtin cd "$@"
-  if [ -f ".agentflow.json" ]; then
-    agentflow sync 2>/dev/null &
+  if [ -f ".specflow.json" ]; then
+    specflow sync 2>/dev/null &
   fi
 }
 ```
@@ -136,7 +136,7 @@ function cd() {
 
 ## Priority order for notes
 
-1. **Tagged `#agentflow`** — always included, no limit
+1. **Tagged `#specflow`** — always included, no limit
 2. **Pinned folders** — always included
 3. **Most recently modified** — top 5 of everything else
 
@@ -150,7 +150,7 @@ Each note contributes: path, source label, first 25 lines (front-matter stripped
 
 ```gitignore
 MEMORY/INDEX.md
-.agentflow.json
+.specflow.json
 ```
 
 ---
@@ -162,8 +162,8 @@ MEMORY/INDEX.md
 → Use absolute path. On Windows: `C:/Users/sky/obsidian/MyVault` (forward slashes work)
 
 **Notes not showing up**  
-→ Confirm `#agentflow` is in the first 5 lines or in front-matter `tags: [agentflow]`  
-→ Re-run `agentflow sync` after tagging
+→ Confirm `#specflow` is in the first 5 lines or in front-matter `tags: [specflow]`  
+→ Re-run `specflow sync` after tagging
 
 **Auto-discover not finding vaults**  
 → Snap/flatpak installs use a different config path — provide path manually
