@@ -1,0 +1,189 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: #000000;
+  color: #d4d4d4;
+  font-family: 'JetBrains Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* CRT blue vignette glow — skills.sh style */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background:
+    radial-gradient(ellipse at top, rgba(56, 120, 200, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom, rgba(56, 120, 200, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at left, rgba(56, 120, 200, 0.04) 0%, transparent 40%),
+    radial-gradient(ellipse at right, rgba(56, 120, 200, 0.04) 0%, transparent 40%);
+}
+
+::selection { background: #00ff8728; color: #00ff87; }
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #222; }
+
+/* Section labels — openspec.dev style */
+.section-label {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #555;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Grid cell — boxy bordered container */
+.grid-cell {
+  border: 1px solid #222;
+  background: #000;
+}
+.grid-cell:hover {
+  border-color: #333;
+}
+
+/* Terminal — square corners */
+.terminal {
+  background: #0a0a0a;
+  border: 1px solid #222;
+  overflow: hidden;
+}
+.terminal-header {
+  background: #111;
+  border-bottom: 1px solid #222;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.terminal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.terminal-body {
+  padding: 18px 20px;
+  font-size: 12.5px;
+  line-height: 1.9;
+}
+
+/* Code line */
+.code-line {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Cursor blink */
+.cursor::after {
+  content: '█';
+  color: #00ff87;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Card hover — subtle border brighten */
+.card-hover {
+  transition: border-color 0.2s ease;
+}
+.card-hover:hover {
+  border-color: #333;
+}
+
+/* Row hover — leaderboard style */
+.row-hover {
+  transition: background-color 0.15s ease;
+}
+.row-hover:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Fade animations */
+.fade-up {
+  animation: fu 0.5s ease both;
+}
+@keyframes fu {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: #222;
+}
+
+/* Gradient text */
+.text-gradient-green {
+  background: linear-gradient(135deg, #00ff87, #00cc6a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Command box */
+.cmd-box {
+  border: 1px solid #222;
+  background: #0a0a0a;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.cmd-box:hover {
+  border-color: #333;
+}
+
+/* Values grid — openspec.dev style horizontal split */
+.values-grid {
+  display: flex;
+  border: 1px solid #222;
+}
+.values-grid > div {
+  flex: 1;
+  padding: 16px 20px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #888;
+}
+.values-grid > div + div {
+  border-left: 1px solid #222;
+}
+
+/* Marquee / rolling effect */
+.marquee-container {
+  position: relative;
+  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+
+.marquee-track {
+  animation: marquee 20s linear infinite;
+  width: max-content;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
