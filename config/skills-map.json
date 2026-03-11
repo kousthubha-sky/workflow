@@ -1,0 +1,56 @@
+{
+  "nextjs":             ["vercel/nextjs-best-practices"],
+  "react":              ["react/react-patterns"],
+  "nuxt":               ["nuxt/nuxt-best-practices"],
+  "sveltekit":          ["svelte/sveltekit-patterns"],
+  "remix":              ["remix/remix-best-practices"],
+  "astro":              ["astro/astro-patterns"],
+  "vite":               ["vite/vite-config-patterns"],
+
+  "supabase":           ["supabase/rls-patterns", "supabase/edge-functions"],
+  "prisma":             ["prisma/schema-patterns"],
+  "drizzle":            ["drizzle/drizzle-patterns"],
+  "mongoose":           ["mongodb/mongoose-patterns"],
+  "kysely":             ["kysely/query-patterns"],
+
+  "clerk":              ["clerk/auth-patterns"],
+  "nextauth":           ["nextauth/session-patterns"],
+  "lucia":              ["lucia/auth-patterns"],
+  "better-auth":        ["better-auth/patterns"],
+
+  "stripe":             ["stripe/stripe-node"],
+  "razorpay":           ["razorpay/razorpay-node"],
+  "lemonsqueezy":       ["lemonsqueezy/integration"],
+
+  "shadcn":             ["shadcn/component-patterns"],
+  "tailwind":           ["tailwind/utility-patterns"],
+  "radix":              ["radix/accessibility-patterns"],
+  "framer-motion":      ["framer-motion/animation-patterns"],
+
+  "vitest":             ["vitest/testing-patterns"],
+  "jest":               ["jest/testing-patterns"],
+  "playwright":         ["playwright/e2e-patterns"],
+  "cypress":            ["cypress/e2e-patterns"],
+
+  "vercel":             ["vercel/deployment-patterns"],
+  "cloudflare-workers": ["cloudflare/workers-patterns"],
+  "aws":                ["aws/sdk-patterns"],
+
+  "zustand":            ["zustand/state-patterns"],
+  "tanstack-query":     ["tanstack/query-patterns"],
+  "tanstack-router":    ["tanstack/router-patterns"],
+
+  "zod":                ["zod/schema-patterns"],
+  "trpc":               ["trpc/router-patterns"],
+  "graphql":            ["graphql/schema-patterns"],
+
+  "openai-sdk":         ["openai/sdk-patterns"],
+  "anthropic-sdk":      ["anthropic/sdk-patterns"],
+
+  "fastapi":            ["fastapi/patterns"],
+  "django":             ["django/patterns"],
+  "flask":              ["flask/patterns"],
+  "go":                 ["go/idiomatic-go"],
+  "rust":               ["rust/ownership-patterns"],
+  "docker":             ["docker/dockerfile-patterns"]
+}

@@ -1,0 +1,7 @@
+node_modules/
+package-lock.json
+
+# agentflow output files (project-local, not part of the tool itself)
+MEMORY/INDEX.md
+.agentflow.json
+.skills/

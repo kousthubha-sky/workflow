@@ -1,0 +1,50 @@
+{
+  "name": "agentflow",
+  "version": "0.1.0",
+  "description": "Universal AI workflow bootstrap — one command, any stack, any agent.",
+  "type": "module",
+  "bin": {
+    "agentflow": "./bin/agentflow.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "config/skills-map.json",
+    "config/agent-map.json",
+    "config/builtin-skills/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node test-detect.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "glob": "^10.3.10",
+    "ora": "^8.0.1",
+    "prompts": "^2.4.2"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.20.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "ai", "workflow", "claude-code", "copilot", "cursor",
+    "opencode", "skills", "openspec", "obsidian", "context",
+    "developer-tools", "cli", "sdd", "agentflow"
+  ],
+  "homepage": "https://github.com/yourusername/agentflow#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/agentflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/agentflow/issues"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

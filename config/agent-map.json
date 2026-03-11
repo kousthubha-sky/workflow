@@ -1,0 +1,8 @@
+{
+  "claude-code":  "CLAUDE.md",
+  "opencode":     "agents.md",
+  "copilot":      ".github/copilot-instructions.md",
+  "cursor":       ".cursor/rules/agentflow.mdc",
+  "aider":        ".aider/context.md",
+  "generic":      "AGENT_CONTEXT.md"
+}
