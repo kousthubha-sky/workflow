@@ -19,7 +19,7 @@ Powered by the **three-tool trinity**: [OpenSpec](https://openspec.dev) for spec
 | Context | specflow | `AGENT_CONTEXT.md` |
 | SDD | OpenSpec | `SPECS/SEED.md` + `SPECS/active/` |
 | Memory | Obsidian | `MEMORY/INDEX.md` |
-| Agent hook | auto-detect | `CLAUDE.md` / `agents.md` / `copilot-instructions.md` |
+| Agent hook | auto-detect | `CLAUDE.md` / `agents.md` / `.windsurfrules` / etc. |
 | Skills | skills.sh | `.skills/` |
 
 ---
@@ -28,7 +28,7 @@ Powered by the **three-tool trinity**: [OpenSpec](https://openspec.dev) for spec
 
 ```bash
 # One-time global
-npm install -g @kousthubha-sky/specflow
+npm install -g @kousthubha/specflow
 
 # Or just run without installing
 npx specflow init
@@ -65,7 +65,7 @@ Detects stack, pulls skills from skills.sh, writes MD files, patches agent conte
 
 | Flag | Purpose |
 |---|---|
-| `--agent <id>` | Force a specific agent (claude, cursor, copilot, aider, opencode) |
+| `--agent <id>` | Force a specific agent (claude-code, cursor, copilot, windsurf, aider, opencode, continue) |
 | `--obsidian <path>` | Path to your Obsidian vault for memory sync |
 | `--dry-run` | Preview what would be generated, without writing |
 
@@ -82,10 +82,10 @@ specflow spec --seed                  # Regenerate SEED.md from archived pattern
 ```
 
 **Workflow:**
-1. `specflow spec "add payments"` → creates `SPECS/active/add-payments/SPEC.md`
+1. `specflow spec "add payments"` → creates `SPECS/active/add-payments/`
 2. AI agent reads the spec, implements it
 3. `specflow spec --validate add-payments` → checks spec is complete + SEED-compliant
-4. `specflow spec --archive add-payments` → moves to `SPECS/archived/`, extracts patterns, evolves SEED.md
+4. `specflow spec --archive add-payments` → moves to `SPECS/archive/`, extracts patterns, evolves SEED.md
 
 ### `skill` — Skills.sh lifecycle
 
@@ -116,7 +116,7 @@ Sync routes Obsidian notes by tag:
 
 | Tag | Routed to |
 |---|---|
-| `#spec`, `#decision`, `#architecture` | OpenSpec (feeds spec proposals) |
+| `#spec`, `#decision`, `#architecture` | OpenSpec (feeds spec proposals + SEED) |
 | `#pattern`, `#skill`, `#best-practice` | Skills.sh (feeds skill creation) |
 | `#specflow`, `#hot`, `#bug`, `#workflow` | Memory (MEMORY/INDEX.md) |
 
@@ -136,22 +136,26 @@ Uses Anthropic's API to analyze your actual code and generate project-specific s
 specflow update [--agent <id>]
 ```
 
-Re-generates the agent context file from current config. Run after manual config changes.
+Re-generates the agent context file from current config. Run after manual config changes or after adding a new agent.
 
 ---
 
 ## Supported agents
 
+`specflow init` prompts you to select which agents you use — select multiple if needed.
+
 | Agent | File patched | Auto-detected |
 |---|---|---|
 | Claude Code | `CLAUDE.md` | ✓ |
-| OpenCode | `agents.md` | ✓ |
 | GitHub Copilot | `.github/copilot-instructions.md` | ✓ |
 | Cursor | `.cursor/rules/specflow.mdc` | ✓ |
+| Windsurf (Codeium) | `.windsurfrules` | ✓ |
+| OpenCode | `agents.md` | ✓ |
+| Continue.dev | `.continue/context.md` | ✓ |
 | Aider | `.aider/context.md` | ✓ |
 | Generic | `AGENT_CONTEXT.md` | fallback |
 
-Agent is auto-detected from your project. Override with `--agent`.
+Agent is auto-detected from your project. The init prompt pre-selects the detected one — add others as needed.
 
 ---
 
@@ -177,64 +181,64 @@ Re-sync any time with `specflow sync`.
 Use specflow as a library inside your own CLI tool or editor extension.
 
 ```bash
-npm install @kousthubha-sky/specflow
+npm install @kousthubha/specflow
 ```
 
 ```javascript
-import { createSpecflowPlugin } from "@kousthubha-sky/specflow/plugin";
+import { createSpecflowPlugin } from "@kousthubha/specflow/plugin";
 
-const af = await createSpecflowPlugin("/path/to/project");
+const sf = await createSpecflowPlugin("/path/to/project");
 
 // Optional: register CLI's native AI for spec-driven generation
-await af.registerCliAI(cliAIInstance);
+await sf.registerCliAI(cliAIInstance);
 
 // Full bootstrap
-const result = await af.detectAndSetup({
-  agents: ["cursor"],
+const result = await sf.detectAndSetup({
+  agents: ["cursor", "claude-code"],
   obsidianPath: "/path/to/vault",
   useCliAI: true,
 });
-// result.stack → ["nextjs", "prisma", "clerk"]
-// result.files → ["CLAUDE.md", "SPECS/SEED.md", ...]
+// result.stack  → ["nextjs", "prisma", "clerk"]
+// result.files  → ["CLAUDE.md", "SPECS/SEED.md", ...]
 // result.method → "ai-driven"
 ```
 
 ### Detection
 
 ```javascript
-const info = await af.detect();
-// info.stack → ["nextjs", "prisma"]
-// info.currentAgent → "cursor"
-// info.availableAgents → ["claude-code", "cursor", "copilot", ...]
+const info = await sf.detect();
+// info.stack          → ["nextjs", "prisma"]
+// info.currentAgent   → "cursor"
+// info.availableAgents → ["claude-code", "cursor", "copilot", "windsurf", ...]
 ```
 
 ### OpenSpec lifecycle
 
 ```javascript
-await af.proposeSpec("add payments", { obsidianPath: "/vault" });
-await af.validateSpec("add-payments");
-await af.archiveSpec("add-payments");
-await af.listSpecs();
-await af.regenerateSeed();
+await sf.proposeSpec("add payments", { obsidianPath: "/vault" });
+await sf.validateSpec("add-payments");
+await sf.archiveSpec("add-payments");
+await sf.listSpecs();
+await sf.regenerateSeed();
 ```
 
 ### Skills lifecycle
 
 ```javascript
-const results = await af.searchSkills("react auth");
-await af.discoverSkills();           // auto-discover for detected stack
-await af.createSkill("my-patterns"); // from project + Obsidian notes
-await af.evolveSkill("my-patterns"); // merge new patterns
-await af.updateSkills();             // update all installed
-const installed = await af.listSkills();
+const results = await sf.searchSkills("react auth");
+await sf.discoverSkills();           // auto-discover for detected stack
+await sf.createSkill("my-patterns"); // from project + Obsidian notes
+await sf.evolveSkill("my-patterns"); // merge new patterns
+await sf.updateSkills();             // update all installed
+const installed = await sf.listSkills();
 ```
 
 ### Obsidian context layer
 
 ```javascript
-await af.syncBidirectional("/path/to/vault");
-const specNotes = await af.getSpecNotes("/vault");   // #spec, #decision tagged
-const skillNotes = await af.getSkillNotes("/vault");  // #pattern, #skill tagged
+await sf.syncBidirectional("/path/to/vault");
+const specNotes  = await sf.getSpecNotes("/vault");   // #spec, #decision tagged
+const skillNotes = await sf.getSkillNotes("/vault");  // #pattern, #skill tagged
 ```
 
 ---
@@ -267,7 +271,7 @@ const skillNotes = await af.getSkillNotes("/vault");  // #pattern, #skill tagged
 1. **Obsidian** holds your thinking — decisions, patterns, architecture notes
 2. **OpenSpec** turns decisions into structured specs the AI follows
 3. **Skills.sh** turns patterns into reusable skill packages
-4. **generation-spec.json** is the stable schema — survives AI model changes, CLI tool changes, everything
+4. **generation-spec.json** is the stable schema — survives AI model changes and CLI tool switching
 5. Your **agent** reads the generated files and works within your spec
 
 ---
@@ -289,10 +293,12 @@ or open a PR to add your stack.
 ```json
 {
   "agent": "claude-code",
+  "agents": ["claude-code", "cursor"],
   "stack": ["nextjs", "supabase", "stripe"],
   "skills": ["vercel/nextjs-best-practices", "supabase/rls-patterns", "stripe/stripe-node"],
   "obsidianPath": "/Users/you/obsidian/MyProject",
-  "lastSync": "2025-03-11T09:00:00.000Z",
+  "pinnedFolders": ["Projects/MyApp"],
+  "lastSync": "2026-03-11T09:00:00.000Z",
   "activeSpec": null
 }
 ```
@@ -313,15 +319,15 @@ The spec follows semantic versioning. Your project pins a spec version; upgrades
 
 ---
 
-## Add to .gitignore
+## .gitignore
 
-```
-MEMORY/INDEX.md     # personal vault content, don't commit
-.specflow.json     # may contain local paths
-.skills/            # downloaded skill files
+```gitignore
+MEMORY/INDEX.md    # personal vault content — do not commit
+.specflow.json     # contains local paths (vault path, agentRoot) — optional to commit
+.skills/           # downloaded skill files — regenerated on demand
 ```
 
-Commit: `AGENT_CONTEXT.md`, `SPECS/SEED.md`, `SPECS/active/`, `SPECS/archived/`
+Commit: `AGENT_CONTEXT.md`, `SPECS/SEED.md`, `SPECS/active/`, `SPECS/archive/`, `.specflow/generation-spec.json`
 
 ---
 
