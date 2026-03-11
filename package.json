@@ -35,13 +35,13 @@
     "opencode", "skills", "openspec", "obsidian", "context",
     "developer-tools", "cli", "sdd", "agentflow"
   ],
-  "homepage": "https://github.com/yourusername/agentflow#readme",
+  "homepage": "https://github.com/kousthubha-sky/workflow#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/agentflow.git"
+    "url": "https://github.com/kousthubha-sky/workflow.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/agentflow/issues"
+    "url": "https://github.com/kousthubha-sky/workflow/issues"
   },
   "license": "MIT",
   "publishConfig": {
