@@ -43,6 +43,18 @@ export default function Hero() {
         <div className="w-[800px] h-[600px] rounded-full bg-accent/[0.05] blur-[120px]" />
       </div>
 
+      {/* name change announcement */}
+      <div className="max-w-5xl mx-auto px-6 mb-6">
+        <div style={{ background: "#1a1a0a", border: "1px solid #3d3a00", borderRadius: 8, padding: "12px 16px" }}>
+          <div className="font-mono font-bold" style={{ color: "#fbbf24", fontSize: 12, marginBottom: 2 }}>
+            ⚠️ Notice: specflow → persistent
+          </div>
+          <p className="font-mono" style={{ color: "#666", fontSize: 11, lineHeight: 1.6, margin: 0 }}>
+            spec-flow has been renamed to <span style={{ color: "#00e87a" }}>persistent</span> due to naming conflicts. NPM package is now <code style={{ color: "#00e87a" }}>@kousthubha/persistent</code>.
+          </p>
+        </div>
+      </div>
+
       <div className="max-w-5xl mx-auto px-6 relative">
         {/* The bordered container — stacked rows like openspec.dev */}
         <div className="border border-border-2">

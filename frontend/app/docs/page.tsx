@@ -82,7 +82,19 @@ export default function Docs() {
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-6 pt-20 pb-24 flex gap-12">
+      {/* name change announcement */}
+      <div className="max-w-6xl mx-auto px-6">
+        <div style={{ background: "#1a1a0a", border: "1px solid #3d3a00", borderRadius: 8, padding: "14px 18px", marginTop: 16, marginBottom: 24 }}>
+          <div className="font-mono font-bold" style={{ color: "#fbbf24", fontSize: 13, marginBottom: 4 }}>
+            ⚠️ Notice: specflow → persistent
+          </div>
+          <p className="font-mono" style={{ color: "#666", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
+            spec-flow has been renamed to <B>persistent</B> due to naming conflicts. All commands now use <code style={{ color: "#00e87a" }}>persistent</code> instead of <code style={{ color: "#888" }}>specflow</code>. The npm package is now <code style={{ color: "#00e87a" }}>@kousthubha/persistent</code>.
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 pb-24 flex gap-12">
         {/* sidebar */}
         <aside className="hidden lg:block w-44 shrink-0 sticky top-20 self-start">
           <div className="font-mono text-xs mb-4" style={{ color: "#333", letterSpacing: "0.1em" }}>DOCS</div>
