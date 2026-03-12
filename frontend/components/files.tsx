@@ -72,14 +72,14 @@ const files = [
 export default function Files() {
   return (
     <section className="border-t border-border bg-bg-2">
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <div className="section-label mb-8">THE FILES</div>
-        <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-3">Three files. Full context.</h2>
-        <p className="text-muted-2 font-mono text-sm mb-12 max-w-lg">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="section-label mb-6 sm:mb-8">THE FILES</div>
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-text mb-3">Three files. Full context.</h2>
+        <p className="text-muted-2 font-mono text-xs sm:text-sm mb-8 sm:mb-12 max-w-lg">
           specflow writes these to your project. Your agent reads them. Two go in git. One stays local.
         </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 border border-border">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-border">
           {files.map((file, i) => (
             <div key={file.path} className={`${i > 0 ? "lg:border-l border-t lg:border-t-0 border-border" : ""}`}>
               <div className="px-5 py-3 border-b border-border bg-bg-3 flex items-center justify-between">

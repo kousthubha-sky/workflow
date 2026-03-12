@@ -51,54 +51,54 @@ const tools = [
 export default function Trinity() {
   return (
     <section id="how-it-works" className="border-t border-border">
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <div className="section-label mb-8">THE THREE-TOOL TRINITY</div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="section-label mb-6 sm:mb-8">THE THREE-TOOL TRINITY</div>
 
-        <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-3">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-text mb-3">
           Three tools. One workflow.
         </h2>
-        <p className="text-muted-2 font-mono text-sm mb-12 max-w-lg">
+        <p className="text-muted-2 font-mono text-xs sm:text-sm mb-8 sm:mb-12 max-w-lg">
           specflow orchestrates OpenSpec, Skills.sh, and Obsidian into a single command.
           Each does one thing perfectly. Together they give your agent full context.
         </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 border border-border">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-border">
           {tools.map((tool, i) => (
-            <div key={tool.name} className={`${i > 0 ? "lg:border-l border-t lg:border-t-0 border-border" : ""}`}>
-              <div className="p-6 border-b border-border">
+            <div key={tool.name} className={`flex flex-col border-border ${i === 1 ? "border-b md:border-b-0 md:border-l" : i === 2 ? "border-t md:border-t-0 md:border-l" : i === 0 ? "md:border-r" : ""}`}>
+              <div className="p-4 sm:p-6 border-b border-border">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <a href={tool.url} target="_blank" rel="noopener noreferrer" className="font-mono font-bold text-base hover:underline" style={{ color: tool.color }}>
+                    <a href={tool.url} target="_blank" rel="noopener noreferrer" className="font-mono font-bold text-xs sm:text-sm md:text-base hover:underline" style={{ color: tool.color }}>
                       {tool.name} ↗
                     </a>
-                    <div className="text-muted font-mono text-[10px] tracking-[0.2em] mt-1">{tool.label}</div>
+                    <div className="text-muted font-mono text-[9px] sm:text-[10px] tracking-[0.2em] mt-1">{tool.label}</div>
                   </div>
                   <div className="flex gap-1 flex-wrap justify-end">
                     {tool.tags.map((t) => (
-                      <span key={t} className="text-[10px] font-mono px-1.5 py-0.5 border" style={{ color: tool.color, borderColor: tool.color + "33" }}>
+                      <span key={t} className="text-[9px] sm:text-[10px] font-mono px-1 sm:px-1.5 py-0.5 border" style={{ color: tool.color, borderColor: tool.color + "33" }}>
                         {t}
                       </span>
                     ))}
                   </div>
                 </div>
-                <p className="text-text font-mono font-semibold text-sm mb-2">{tool.tagline}</p>
-                <p className="text-muted-2 font-mono text-xs leading-relaxed">{tool.desc}</p>
+                <p className="text-text font-mono font-semibold text-xs sm:text-sm mb-2">{tool.tagline}</p>
+                <p className="text-muted-2 font-mono text-[10px] sm:text-xs leading-relaxed">{tool.desc}</p>
               </div>
-              <div className="p-4 border-b border-border bg-bg-2">
+              <div className="p-3 sm:p-4 border-b border-border bg-bg-2">
                 {tool.commands.map((c) => (
                   <div key={c.cmd} className="mb-1 last:mb-0">
-                    <span className="text-muted text-xs font-mono">$ </span>
-                    <span style={{ color: tool.color }} className="text-xs font-mono">{c.cmd}</span>
-                    <span className="text-muted text-xs font-mono"> {c.comment}</span>
+                    <span className="text-muted text-[10px] sm:text-xs font-mono">$ </span>
+                    <span style={{ color: tool.color }} className="text-[10px] sm:text-xs font-mono break-all">{c.cmd}</span>
+                    <span className="text-muted text-[10px] sm:text-xs font-mono"> {c.comment}</span>
                   </div>
                 ))}
               </div>
-              <div className="p-4">
-                <div className="text-muted font-mono text-[10px] mb-2 tracking-[0.2em]">FILES</div>
+              <div className="p-3 sm:p-4">
+                <div className="text-muted font-mono text-[9px] sm:text-[10px] mb-2 tracking-[0.2em]">FILES</div>
                 {tool.files.map((f) => (
                   <div key={f} className="flex items-center gap-2 mb-1">
-                    <span style={{ color: tool.color }} className="text-xs">→</span>
-                    <span className="text-muted-2 font-mono text-xs">{f}</span>
+                    <span style={{ color: tool.color }} className="text-[10px] sm:text-xs shrink-0">→</span>
+                    <span className="text-muted-2 font-mono text-[10px] sm:text-xs break-all">{f}</span>
                   </div>
                 ))}
               </div>
@@ -106,13 +106,13 @@ export default function Trinity() {
           ))}
         </div>
 
-        <div className="mt-12 border border-border">
-          <div className="px-6 py-3 border-b border-border bg-bg-2">
-            <span className="text-muted font-mono text-[10px] tracking-[0.2em]">TAG ROUTING — OBSIDIAN → DESTINATIONS</span>
+        <div className="mt-8 sm:mt-12 border border-border overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 border-b border-border bg-bg-2">
+            <span className="text-muted font-mono text-[9px] sm:text-[10px] tracking-[0.2em]">TAG ROUTING — OBSIDIAN → DESTINATIONS</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3">
-            <div className="p-6">
-              <div className="text-muted-2 font-mono text-xs mb-3 tracking-wider">OBSIDIAN TAGS</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 border-t md:border-t-0 border-border">
+            <div className="p-4 sm:p-6 border-b md:border-b-0 md:border-r border-border">
+              <div className="text-muted-2 font-mono text-[10px] sm:text-xs mb-3 tracking-wider">OBSIDIAN TAGS</div>
               {[
                 { tag: "#spec, #decision, #architecture", color: "#3b82f6" },
                 { tag: "#pattern, #skill, #best-practice", color: "#fbbf24" },
@@ -121,11 +121,11 @@ export default function Trinity() {
                 <div key={r.tag} className="mb-2 text-xs font-mono" style={{ color: r.color }}>{r.tag}</div>
               ))}
             </div>
-            <div className="flex items-center justify-center border-x border-border">
+            <div className="hidden md:flex items-center justify-center border-x border-border">
               <span className="text-muted-2 text-lg">→</span>
             </div>
-            <div className="p-6">
-              <div className="text-muted-2 font-mono text-xs mb-3 tracking-wider">ROUTED TO</div>
+            <div className="p-4 sm:p-6">
+              <div className="text-muted-2 font-mono text-[10px] sm:text-xs mb-3 tracking-wider">ROUTED TO</div>
               {[
                 { dest: "OpenSpec → SEED.md evolution", color: "#3b82f6" },
                 { dest: "Skills.sh → skill creation", color: "#fbbf24" },

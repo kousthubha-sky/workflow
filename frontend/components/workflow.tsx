@@ -102,7 +102,7 @@ const steps = [
 export default function Workflow() {
   return (
     <section id="workflow" className="border-t border-border">
-      <div className="max-w-6xl mx-auto px-6 py-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
         <div className="section-label mb-8">THE WORKFLOW</div>
         <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-3">How a dev uses specflow.</h2>
         <p className="text-muted-2 font-mono text-sm mb-12 max-w-lg">

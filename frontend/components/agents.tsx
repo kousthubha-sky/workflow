@@ -13,36 +13,36 @@ const agents = [
 export default function Agents() {
   return (
     <section className="border-t border-border">
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <div className="section-label mb-8">SUPPORTED AGENTS</div>
-        <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-3">Works with every agent.</h2>
-        <p className="text-muted-2 font-mono text-sm mb-12 max-w-lg">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="section-label mb-6 sm:mb-8">SUPPORTED AGENTS</div>
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-text mb-3">Works with every agent.</h2>
+        <p className="text-muted-2 font-mono text-xs sm:text-sm mb-8 sm:mb-12 max-w-lg">
           specflow auto-detects which agent you use from your project structure.
           The init prompt lets you select multiple — it patches each one.
         </p>
 
-        <div className="border border-border mb-12">
-          <div className="grid grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-4 py-3 border-b border-border bg-bg-2">
-            <span className="text-muted font-mono text-[10px] tracking-wider">#</span>
-            <span className="text-muted font-mono text-[10px] tracking-wider">AGENT</span>
-            <span className="text-muted font-mono text-[10px] tracking-wider hidden md:block">FILE</span>
-            <span className="text-muted font-mono text-[10px] tracking-wider text-right">DETECTION</span>
+        <div className="border border-border mb-8 sm:mb-12 overflow-x-auto">
+          <div className="grid grid-cols-[35px_1fr_1fr_auto] sm:grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-3 sm:px-4 py-3 border-b border-border bg-bg-2 min-w-full">
+            <span className="text-muted font-mono text-[9px] sm:text-[10px] tracking-wider">#</span>
+            <span className="text-muted font-mono text-[9px] sm:text-[10px] tracking-wider">AGENT</span>
+            <span className="text-muted font-mono text-[9px] sm:text-[10px] tracking-wider hidden md:block">FILE</span>
+            <span className="text-muted font-mono text-[9px] sm:text-[10px] tracking-wider text-right">DETECTION</span>
           </div>
           {agents.map((agent) => (
-            <div key={agent.id} className="grid grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-4 py-3 border-b border-border last:border-b-0 row-hover">
-              <span className="text-muted font-mono text-xs">{agent.rank}</span>
-              <span className="text-text font-mono text-xs font-semibold">{agent.label}</span>
-              <span className="text-accent font-mono text-xs hidden md:block">{agent.file}</span>
-              <span className="text-muted-2 font-mono text-[10px] text-right">
+            <div key={agent.id} className="grid grid-cols-[35px_1fr_1fr_auto] sm:grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-3 sm:px-4 py-3 border-b border-border last:border-b-0 row-hover min-w-full">
+              <span className="text-muted font-mono text-[10px] sm:text-xs">{agent.rank}</span>
+              <span className="text-text font-mono text-[10px] sm:text-xs font-semibold truncate">{agent.label}</span>
+              <span className="text-accent font-mono text-[10px] sm:text-xs hidden md:block truncate">{agent.file}</span>
+              <span className="text-muted-2 font-mono text-[9px] sm:text-[10px] text-right whitespace-nowrap">
                 <span className="text-lime mr-1">✓</span>auto
               </span>
             </div>
           ))}
-          <div className="grid grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-4 py-3 bg-bg-2">
-            <span className="text-muted font-mono text-xs">—</span>
-            <span className="text-muted-2 font-mono text-xs">Generic</span>
-            <span className="text-muted font-mono text-xs hidden md:block">CLAUDE.md / agents.md</span>
-            <span className="text-muted font-mono text-[10px] text-right">fallback</span>
+          <div className="grid grid-cols-[35px_1fr_1fr_auto] sm:grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-3 sm:px-4 py-3 bg-bg-2 min-w-full">
+            <span className="text-muted font-mono text-[10px] sm:text-xs">—</span>
+            <span className="text-muted-2 font-mono text-[10px] sm:text-xs">Generic</span>
+            <span className="text-muted font-mono text-[10px] sm:text-xs hidden md:block">CLAUDE.md / agents.md</span>
+            <span className="text-muted font-mono text-[9px] sm:text-[10px] text-right">fallback</span>
           </div>
         </div>
 

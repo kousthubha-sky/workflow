@@ -34,11 +34,16 @@ body::before {
 
 /* Section labels */
 .section-label {
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: #555;
   font-family: 'JetBrains Mono', monospace;
+}
+@media (min-width: 640px) {
+  .section-label {
+    font-size: 11px;
+  }
 }
 
 /* Terminal — square corners */
@@ -61,9 +66,22 @@ body::before {
   border-radius: 50%;
 }
 .terminal-body {
-  padding: 18px 20px;
-  font-size: 12.5px;
-  line-height: 1.9;
+  padding: 12px 14px;
+  font-size: 11px;
+  line-height: 1.8;
+  overflow-x: auto;
+}
+@media (min-width: 640px) {
+  .terminal-body {
+    padding: 16px 18px;
+    font-size: 12px;
+  }
+}
+@media (min-width: 768px) {
+  .terminal-body {
+    padding: 18px 20px;
+    font-size: 12.5px;
+  }
 }
 
 .code-line {
@@ -109,12 +127,20 @@ body::before {
 .cmd-box {
   border: 1px solid #1a1a1a;
   background: #0a0a0a;
-  padding: 12px 16px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   transition: border-color 0.2s;
+  overflow-x: auto;
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  .cmd-box {
+    padding: 12px 16px;
+    gap: 8px;
+  }
 }
 .cmd-box:hover {
   border-color: #2a2a2a;
@@ -161,4 +187,16 @@ body::before {
   100% {
     transform: translateX(-50%);
   }
+}
+
+/* Responsive code block handling */
+pre {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text overflow */
+code, .font-mono {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }

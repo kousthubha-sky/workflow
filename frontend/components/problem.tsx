@@ -28,13 +28,13 @@ const pains = [
 export default function Problem() {
   return (
     <section className="border-t border-border">
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <div className="section-label mb-8">THE PROBLEM</div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="section-label mb-6 sm:mb-8">THE PROBLEM</div>
 
-        <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-3 leading-tight">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-text mb-3 leading-tight">
           Your agent has no memory.
         </h2>
-        <p className="text-muted-2 font-mono text-sm mb-12 max-w-lg">
+        <p className="text-muted-2 font-mono text-xs sm:text-sm mb-8 sm:mb-12 max-w-lg">
           AI coding agents are powerful but stateless. Every session starts from zero.
           specflow makes your project the context — persistent, structured, version-controlled.
         </p>
@@ -46,13 +46,13 @@ export default function Problem() {
             return (
               <div
                 key={p.title}
-                className={`p-6 md:p-8 card-hover ${
+                className={`p-4 sm:p-6 md:p-8 card-hover ${
                   i % 2 !== 0 ? "md:border-l border-border" : ""
                 } ${i >= 2 ? "border-t border-border" : ""}`}
               >
                 <Icon size={20} className="text-muted-2 mb-3" strokeWidth={1.5} />
-                <h3 className="text-text font-mono font-semibold text-xs tracking-wider mb-3">{p.title}</h3>
-                <p className="text-muted-2 font-mono text-xs leading-relaxed">{p.desc}</p>
+                <h3 className="text-text font-mono font-semibold text-[10px] sm:text-xs tracking-wider mb-3">{p.title}</h3>
+                <p className="text-muted-2 font-mono text-[10px] sm:text-xs leading-relaxed">{p.desc}</p>
               </div>
             );
           })}

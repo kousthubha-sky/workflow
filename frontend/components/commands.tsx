@@ -57,15 +57,15 @@ export default function Commands() {
 
   return (
     <section id="commands" className="border-t border-border bg-bg-2">
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <div className="section-label mb-8">COMMANDS</div>
-        <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-12">Full CLI reference.</h2>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <div className="section-label mb-6 sm:mb-8">COMMANDS</div>
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-text mb-8 sm:mb-12">Full CLI reference.</h2>
 
-        <div className="flex flex-col lg:flex-row gap-0 border border-border">
+        <div className="flex flex-col lg:flex-row gap-0 border border-border overflow-hidden">
           <div className="lg:w-48 flex flex-row lg:flex-col lg:border-r border-b lg:border-b-0 border-border overflow-x-auto">
             {groups.map((g, i) => (
               <button key={g.label} onClick={() => setActive(i)}
-                className={`text-left px-4 py-3 font-mono text-xs whitespace-nowrap transition-all border-b lg:border-b last:border-b-0 border-border ${
+                className={`text-left px-3 sm:px-4 py-3 font-mono text-[11px] sm:text-xs whitespace-nowrap transition-all border-b lg:border-b last:border-b-0 border-border ${
                   active === i ? "bg-bg-3 text-text" : "text-muted-2 hover:text-text hover:bg-bg-2"
                 }`}>
                 <span style={{ color: active === i ? g.color : undefined }}>{g.label}</span>
@@ -73,19 +73,19 @@ export default function Commands() {
             ))}
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 overflow-x-auto">
             {groups[active].cmds.map((c, i) => (
               <div key={c.cmd} className={`${i > 0 ? "border-t border-border" : ""}`}>
-                <div className="px-5 py-3 bg-bg-3 flex flex-wrap items-baseline gap-2 border-b border-border">
-                  <span className="text-muted font-mono text-sm">$</span>
-                  <span style={{ color: groups[active].color }} className="font-mono font-bold text-sm">{c.cmd}</span>
-                  {c.flags && <span className="text-muted font-mono text-xs">{c.flags}</span>}
+                <div className="px-4 sm:px-5 py-3 bg-bg-3 flex flex-wrap items-baseline gap-2 border-b border-border">
+                  <span className="text-muted font-mono text-xs sm:text-sm">$</span>
+                  <span style={{ color: groups[active].color }} className="font-mono font-bold text-xs sm:text-sm break-all">{c.cmd}</span>
+                  {c.flags && <span className="text-muted font-mono text-[10px] sm:text-xs break-all">{c.flags}</span>}
                 </div>
-                <div className="px-5 py-4">
-                  <p className="text-muted-2 font-mono text-xs leading-relaxed mb-3">{c.desc}</p>
-                  <div className="flex items-center gap-2 bg-bg-3 px-3 py-2 border border-border">
-                    <span className="text-muted text-xs font-mono">e.g.</span>
-                    <span className="text-muted-2 font-mono text-xs">{c.example}</span>
+                <div className="px-4 sm:px-5 py-4">
+                  <p className="text-muted-2 font-mono text-[10px] sm:text-xs leading-relaxed mb-3">{c.desc}</p>
+                  <div className="flex items-center gap-2 bg-bg-3 px-3 py-2 border border-border overflow-x-auto">
+                    <span className="text-muted text-[10px] sm:text-xs font-mono">e.g.</span>
+                    <span className="text-muted-2 font-mono text-[10px] sm:text-xs break-all">{c.example}</span>
                   </div>
                 </div>
               </div>
@@ -93,21 +93,21 @@ export default function Commands() {
           </div>
         </div>
 
-        <div className="mt-12 border border-border">
-          <div className="px-6 py-3 border-b border-border bg-bg-3 flex items-center justify-between">
-            <span className="text-text font-mono font-semibold text-sm">Plugin API</span>
-            <span className="text-muted font-mono text-[10px] tracking-wider">FOR CLI TOOLS + EDITOR EXTENSIONS</span>
+        <div className="mt-8 sm:mt-12 border border-border overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 border-b border-border bg-bg-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <span className="text-text font-mono font-semibold text-xs sm:text-sm">Plugin API</span>
+            <span className="text-muted font-mono text-[9px] sm:text-[10px] tracking-wider whitespace-nowrap">FOR CLI TOOLS + EDITOR EXTENSIONS</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="p-6 md:border-r border-border">
-              <p className="text-muted-2 font-mono text-xs leading-relaxed mb-4">
+            <div className="p-4 sm:p-6 md:border-r border-border">
+              <p className="text-muted-2 font-mono text-[10px] sm:text-xs leading-relaxed mb-4">
                 Use specflow as a library inside your own CLI tool or editor extension.
                 Register your native AI instance for spec-driven context generation.
               </p>
-              <div className="text-accent font-mono text-xs">npm install @kousthubha/specflow</div>
+              <div className="text-accent font-mono text-[10px] sm:text-xs break-all">npm install @kousthubha/specflow</div>
             </div>
-            <div className="p-6 bg-bg overflow-x-auto">
-              <pre className="text-xs font-mono leading-relaxed">
+            <div className="p-4 sm:p-6 bg-bg overflow-x-auto">
+              <pre className="text-[10px] sm:text-xs font-mono leading-relaxed">
                 <span className="text-muted">{"// Claude Code, Cursor, Windsurf, etc.\n"}</span>
                 <span className="text-accent">{"import"}</span>
                 <span className="text-text">{" { createSpecflowPlugin } "}</span>

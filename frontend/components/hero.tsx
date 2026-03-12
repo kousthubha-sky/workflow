@@ -44,11 +44,11 @@ export default function Hero() {
         <div className="border border-border-2">
 
           {/* ROW 1 — ASCII Art headline (like openspec's centered headline, but with ASCII art) */}
-          <div className="py-12 md:py-16 px-6 flex flex-col items-center justify-center text-center overflow-x-auto">
-            <pre className="text-white text-[8px] sm:text-[10px] md:text-xs leading-tight font-mono whitespace-pre select-none mb-4">
+          <div className="py-8 sm:py-12 md:py-16 px-4 sm:px-6 flex flex-col items-center justify-center text-center overflow-x-auto">
+            <pre className="text-white text-[7px] sm:text-[9px] md:text-xs leading-tight font-mono whitespace-pre select-none mb-3 sm:mb-4">
               {ASCII_ART}
             </pre>
-            <p className="text-muted-2 font-mono text-sm md:text-base mt-2 max-w-xl">
+            <p className="text-muted-2 font-mono text-xs sm:text-sm md:text-base mt-2 max-w-xl px-2">
               Bootstrap your AI coding agent with persistent context.
               One command. Any stack. Any agent.
             </p>
@@ -59,7 +59,7 @@ export default function Hero() {
             {["UNIVERSAL", "OPEN SOURCE", "ANY AGENT", "NO MCP REQUIRED"].map((v, i) => (
               <div
                 key={v}
-                className={`py-4 text-center font-mono text-[10px] md:text-xs tracking-[0.15em] text-muted-2 ${
+                className={`py-3 sm:py-4 text-center font-mono text-[9px] sm:text-[10px] md:text-xs tracking-[0.15em] text-muted-2 ${
                   i > 0 ? "border-l border-border-2" : ""
                 } ${i >= 2 ? "border-t md:border-t-0 border-border-2" : ""}`}
               >
@@ -69,13 +69,13 @@ export default function Hero() {
           </div>
 
           {/* ROW 3 — Get Started (left label + right command) */}
-          <div className="flex items-center justify-between border-t border-border-2 px-6 py-4">
-            <span className="font-mono text-[10px] md:text-xs tracking-[0.2em] text-muted uppercase">GET STARTED</span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-border-2 px-4 sm:px-6 py-4 gap-2 sm:gap-0">
+            <span className="font-mono text-[9px] sm:text-[10px] md:text-xs tracking-[0.2em] text-muted uppercase">GET STARTED</span>
             <button
               onClick={handleCopy}
-              className="flex items-center gap-3 group cursor-pointer"
+              className="flex items-center gap-2 sm:gap-3 group cursor-pointer w-full sm:w-auto"
             >
-              <code className="font-mono text-xs md:text-sm text-text">
+              <code className="font-mono text-[10px] sm:text-xs md:text-sm text-text break-all sm:break-normal">
                 npx @kousthubha/specflow init
               </code>
               {copied ? (
@@ -87,15 +87,15 @@ export default function Hero() {
           </div>
 
           {/* ROW 4 — GitHub (left label + right link) */}
-          <div className="flex items-center justify-between border-t border-border-2 px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-border-2 px-4 sm:px-6 py-4 gap-2 sm:gap-0">
             <div className="flex items-center gap-3">
-              <span className="font-mono text-[10px] md:text-xs tracking-[0.2em] text-muted uppercase">GITHUB</span>
+              <span className="font-mono text-[9px] sm:text-[10px] md:text-xs tracking-[0.2em] text-muted uppercase">GITHUB</span>
             </div>
             <a
               href="https://github.com/kousthubha-sky/workflow"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-xs text-muted-2 hover:text-text transition-colors flex items-center gap-1"
+              className="font-mono text-[10px] sm:text-xs text-muted-2 hover:text-text transition-colors flex items-center gap-1 break-all sm:break-normal"
             >
               github.com/kousthubha-sky/workflow
               <span className="text-muted">↗</span>
@@ -103,13 +103,13 @@ export default function Hero() {
           </div>
 
           {/* ROW 5 — Discord (left label + right link) */}
-          <div className="flex items-center justify-between border-t border-border-2 px-6 py-4">
-            <span className="font-mono text-[10px] md:text-xs tracking-[0.2em] text-muted uppercase">DISCORD</span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-border-2 px-4 sm:px-6 py-4 gap-2 sm:gap-0">
+            <span className="font-mono text-[9px] sm:text-[10px] md:text-xs tracking-[0.2em] text-muted uppercase">DISCORD</span>
             <a
               href="https://discord.gg/YctCnvvshC"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-xs text-muted-2 hover:text-text transition-colors flex items-center gap-1"
+              className="font-mono text-[10px] sm:text-xs text-muted-2 hover:text-text transition-colors flex items-center gap-1"
             >
               discord.gg/YctCnvvshC
               <span className="text-muted">↗</span>
