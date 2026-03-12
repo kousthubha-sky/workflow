@@ -1,5 +1,5 @@
 {
-  "$schema": "https://persistent.dev/generation-spec.schema.json",
+  "$schema": "https://persistent.technology/generation-spec.schema.json",
   "version": "1.0.0",
   "description": "Stable specification for persistent context generation. This spec is the source of truth — AI adapts to it, not vice versa. Ensures consistency across CLI tools and model versions.",
   

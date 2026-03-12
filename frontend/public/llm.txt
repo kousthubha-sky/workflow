@@ -1,0 +1,51 @@
+# Persistent Documentation for LLMs
+
+## About Persistent
+
+Persistent is a universal AI workflow bootstrap tool that helps AI agents understand and work with any codebase consistently.
+
+**Core Features:**
+- Stack detection (Node.js, Python, Go, Rust, etc.)
+- Multi-agent support (Claude Code, Cursor, Copilot, OpenCode, Aider, Windsurf, Continue)
+- Spec-driven development with OpenSpec
+- Skills.sh integration for framework-specific knowledge
+- Obsidian bidirectional sync with tag routing
+- AI-powered code analysis and context generation
+- Native slash commands (/persistent-*) for Claude Code and OpenCode
+
+## Key Commands
+
+```
+persistent init [--agent <id>] [--obsidian <path>] [--dry-run]
+persistent spec "feature name"
+persistent skill --search/--create/--evolve/--update
+persistent sync [--one-way] [--discover] [--pin <folder>]
+persistent analyze [--key <anthropic-key>] [--force] [--only <skills>]
+persistent update [--agent <id>]
+```
+
+## Workflow
+
+1. Run `persistent init` to bootstrap your project
+2. Connect Obsidian for memory sync (optional)
+3. Use `persistent spec` to manage features
+4. Use `persistent skill` to manage knowledge
+5. Use `persistent sync` to keep memory in sync
+6. Use `/persistent-*` slash commands in Claude Code/OpenCode
+
+## Documentation
+
+Full documentation available at: https://persistent.technology/docs
+
+## Repository
+
+Hosted at: https://github.com/kousthubha-sky/workflow
+
+## License
+
+MIT
+
+---
+
+Last updated: 2026-03-12
+For LLM access and integration guidance, see the documentation site.
