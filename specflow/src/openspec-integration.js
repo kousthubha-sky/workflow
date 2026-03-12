@@ -1,950 +1,513 @@
 /**
  * openspec-integration.js
- * Deep integration with openspec.dev — the core spec-driven development engine.
  *
- * OpenSpec is not just a file template system — it's the lifecycle manager
- * for all specification-driven work. This module wraps the openspec CLI
- * and connects it with Obsidian context and the AI generation pipeline.
+ * Thin wrapper around the real OpenSpec CLI (@fission-ai/openspec).
+ * persistent does NOT re-implement spec creation — OpenSpec owns that.
  *
- * Flow:
- *   Obsidian notes (#spec, #decision) → OpenSpec proposals
- *   OpenSpec validate → generation-spec compliance
- *   OpenSpec archive → SEED.md evolution
- *   SEED.md → AI context generation
+ * What THIS module does:
+ *   1. Check/install OpenSpec if missing
+ *   2. Run `openspec init` / `openspec update` in the project
+ *   3. Build SEED.md (persistent-specific: accumulated architectural DNA)
+ *   4. Route Obsidian context into the agent's context window BEFORE
+ *      the user runs OpenSpec slash commands (/opsx:new, /opsx:ff, etc.)
  *
- * CLI dependency: `npx openspec` (optional — falls back to local engine)
+ * OpenSpec structure (owned by openspec, not us):
+ *   openspec/specs/<feature>/spec.md      ← living requirements
+ *   openspec/changes/<id>/proposal.md     ← proposed change
+ *   openspec/changes/<id>/design.md       ← technical decisions
+ *   openspec/changes/<id>/tasks.md        ← implementation checklist
+ *   openspec/changes/<id>/specs/          ← spec deltas
+ *
+ * OpenSpec slash commands (run inside your agent, not here):
+ *   /opsx:new <feature>    — create a change
+ *   /opsx:ff               — fast-forward: generate proposal + design + tasks
+ *   /opsx:apply            — implement tasks
+ *   /opsx:archive          — archive completed change
+ *   /opsx:onboard          — first-time setup walkthrough
+ *
+ * SEED.md (persistent-specific, complements OpenSpec):
+ *   SPECS/SEED.md          — architectural DNA that evolves with each archive
  */
 
-import { execSync, exec } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 import chalk from "chalk";
 import ora from "ora";
 
+const SEED_FILE = path.join("SPECS", "SEED.md");
 const SPECS_DIR = "SPECS";
-const ACTIVE_DIR = `${SPECS_DIR}/active`;
-const ARCHIVE_DIR = `${SPECS_DIR}/archive`;
-const SEED_FILE = `${SPECS_DIR}/SEED.md`;
 
-// ─── OpenSpec CLI Detection ─────────────────────────────────────────────────
-
-let _openspecAvailable = null;
+// ─── OpenSpec CLI Detection + Install ───────────────────────────────────────
 
 /**
- * Check if the openspec CLI is available.
- * Caches result for the session.
- * @returns {Promise<boolean>}
+ * Check if openspec is available globally.
+ * @returns {{ available: boolean, version: string|null }}
  */
-export async function isOpenSpecAvailable() {
-  if (_openspecAvailable !== null) return _openspecAvailable;
+export async function checkOpenSpec() {
   try {
-    execSync("npx --yes openspec --version", { stdio: "pipe", timeout: 15_000 });
-    _openspecAvailable = true;
+    const out = execSync("openspec --version", { stdio: "pipe", timeout: 8_000, encoding: "utf8" });
+    return { available: true, version: out.trim() };
   } catch {
-    _openspecAvailable = false;
+    return { available: false, version: null };
   }
-  return _openspecAvailable;
 }
 
 /**
- * Run an openspec CLI command.
- * @param {string} args - CLI arguments (e.g., "propose add-dark-mode")
- * @param {string} cwd - Working directory
- * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>}
+ * Run an openspec CLI command in the project.
+ * @param {string[]} args  - e.g. ["init"] or ["update"]
+ * @param {string}   cwd   - project root
  */
-async function runOpenSpec(args, cwd) {
-  try {
-    const stdout = execSync(`npx --yes openspec ${args}`, {
-      cwd,
-      stdio: "pipe",
-      timeout: 30_000,
-      encoding: "utf8",
-    });
-    return { ok: true, stdout: stdout.trim(), stderr: "" };
-  } catch (err) {
-    return {
-      ok: false,
-      stdout: err.stdout?.toString() ?? "",
-      stderr: err.stderr?.toString() ?? err.message,
-    };
-  }
+function runOpenSpec(args, cwd) {
+  const result = spawnSync("openspec", args, {
+    cwd,
+    stdio: "inherit",   // stream output live to user
+    timeout: 60_000,
+    shell: process.platform === "win32",
+  });
+  return { ok: result.status === 0, status: result.status };
 }
 
-// ─── Spec Lifecycle (OpenSpec-native) ───────────────────────────────────────
+// ─── Init ───────────────────────────────────────────────────────────────────
 
 /**
- * Initialize OpenSpec in a project.
- * Sets up SPECS/ directory structure with openspec conventions.
- * @param {string} cwd - Project root
- * @param {Object} opts
- * @param {string[]} opts.stack - Detected stack keys
- * @param {Object} opts.obsidianContext - Context from Obsidian notes
+ * Initialize OpenSpec in the project + set up SEED.md.
+ * Called during `persistent init`.
+ *
+ * @param {string}   cwd
+ * @param {Object}   opts
+ * @param {string[]} opts.stack         - Detected stack keys
+ * @param {Object[]} opts.decisionNotes - Obsidian #decision notes to seed SEED.md
  */
 export async function initOpenSpec(cwd, opts = {}) {
-  const spinner = ora("Initializing OpenSpec SDD structure...").start();
-  const hasOpenSpec = await isOpenSpecAvailable();
+  const { available, version } = await checkOpenSpec();
 
-  if (hasOpenSpec) {
-    const result = await runOpenSpec("init", cwd);
-    if (result.ok) {
-      spinner.succeed("OpenSpec initialized via openspec CLI");
-      // Enhance with persistent-specific seed content
-      await enhanceSeedWithContext(cwd, opts);
-      return { method: "openspec-cli", success: true };
-    }
-    spinner.text = "openspec init failed, using local engine...";
-  }
-
-  // Local fallback: create the directory structure
-  await fs.mkdir(path.join(cwd, ACTIVE_DIR), { recursive: true });
-  await fs.mkdir(path.join(cwd, ARCHIVE_DIR), { recursive: true });
-
-  // Generate SEED.md with context awareness
-  await generateSeedFromContext(cwd, opts);
-
-  spinner.succeed("OpenSpec SDD structure initialized (local engine)");
-  return { method: "local", success: true };
-}
-
-/**
- * Propose a new feature spec using OpenSpec lifecycle.
- * Integrates Obsidian notes tagged #spec as input context.
- *
- * @param {string} feature - Feature description
- * @param {string} cwd - Project root
- * @param {Object} opts
- * @param {Object[]} opts.obsidianNotes - Relevant Obsidian notes for context
- * @param {string[]} opts.stack - Detected stack
- * @param {Object} opts.cliAI - CLI's native AI instance (optional)
- */
-export async function proposeSpec(feature, cwd, opts = {}) {
-  const slug = slugify(feature);
-  const specDir = path.join(cwd, ACTIVE_DIR, slug);
-  const spinner = ora(`Proposing spec: ${chalk.cyan(slug)}`).start();
-
-  const hasOpenSpec = await isOpenSpecAvailable();
-
-  if (hasOpenSpec) {
-    // Use openspec CLI for proposal creation
-    const result = await runOpenSpec(`propose "${feature}"`, cwd);
-    if (result.ok) {
-      spinner.text = "Enhancing with project context...";
-      // Enrich the CLI-generated proposal with Obsidian + stack context
-      await enrichSpecWithContext(specDir, opts);
-      spinner.succeed(`Spec proposed via openspec CLI: ${chalk.bold(slug)}`);
-      return { method: "openspec-cli", slug, specDir };
-    }
-  }
-
-  // Local engine: Create spec files with context awareness
-  await fs.mkdir(specDir, { recursive: true });
-
-  // Pull relevant Obsidian context
-  const obsidianContext = await extractObsidianContext(opts.obsidianNotes, feature);
-  const seedConstraints = await loadSeedConstraints(cwd);
-
-  // Generate context-aware proposal
-  if (opts.cliAI) {
-    await generateAIProposal(feature, specDir, {
-      cliAI: opts.cliAI,
-      obsidianContext,
-      seedConstraints,
-      stack: opts.stack || [],
-    });
+  if (!available) {
+    console.log(chalk.yellow("\n⚠  OpenSpec not found globally."));
+    console.log(chalk.dim("  Install: ") + chalk.cyan("npm install -g @fission-ai/openspec@latest"));
+    console.log(chalk.dim("  Then re-run: ") + chalk.cyan("persistent init\n"));
+    console.log(chalk.dim("  Skipping OpenSpec setup — continuing with SEED.md only.\n"));
   } else {
-    await generateStaticProposal(feature, specDir, {
-      obsidianContext,
-      seedConstraints,
-      stack: opts.stack || [],
-    });
+    console.log(chalk.green("✓") + ` OpenSpec ${chalk.dim(version)}`);
+    const spinner = ora("Running openspec init...").start();
+
+    // Check if openspec is already initialized (openspec/ dir exists)
+    const alreadyInit = await fileExists(path.join(cwd, "openspec"));
+    if (alreadyInit) {
+      // Update instead of init to avoid overwriting existing structure
+      const result = runOpenSpec(["update"], cwd);
+      spinner.succeed(result.ok ? "openspec update done" : "openspec update had warnings (see above)");
+    } else {
+      const result = runOpenSpec(["init"], cwd);
+      spinner.succeed(result.ok ? "openspec init done" : "openspec init had warnings (see above)");
+    }
   }
 
-  spinner.succeed(`Spec proposed: ${chalk.bold(ACTIVE_DIR + "/" + slug + "/")}`);
-  console.log(chalk.dim("  proposal.md · design.md · tasks.md"));
-  return { method: "local", slug, specDir };
+  // Always set up SEED.md — this is persistent's own contribution
+  await ensureSeed(cwd, opts);
 }
 
 /**
- * Validate a spec against generation-spec rules and SEED.md constraints.
- * Uses openspec validate if available, otherwise runs local checks.
- *
- * @param {string} slug - Spec slug
- * @param {string} cwd - Project root
- * @returns {Promise<{ valid: boolean, issues: string[], warnings: string[] }>}
- */
-export async function validateSpec(slug, cwd) {
-  const specDir = path.join(cwd, ACTIVE_DIR, slug);
-  const spinner = ora(`Validating spec: ${chalk.cyan(slug)}`).start();
-  const result = { valid: true, issues: [], warnings: [] };
-
-  const hasOpenSpec = await isOpenSpecAvailable();
-
-  if (hasOpenSpec) {
-    const cliResult = await runOpenSpec(`validate "${slug}"`, cwd);
-    if (cliResult.ok) {
-      spinner.text = "OpenSpec validation passed, running persistent checks...";
-      // Parse CLI output for any issues
-      if (cliResult.stdout.includes("WARN")) {
-        result.warnings.push(...extractWarnings(cliResult.stdout));
-      }
-    }
-  }
-
-  // Local validation: check structure, SEED.md compliance, generation-spec rules
-  try {
-    // 1. Check required files exist
-    for (const file of ["proposal.md", "design.md", "tasks.md"]) {
-      try {
-        await fs.access(path.join(specDir, file));
-      } catch {
-        result.valid = false;
-        result.issues.push(`Missing required file: ${file}`);
-      }
-    }
-
-    // 2. Check proposal has filled sections
-    const proposal = await safeReadFile(path.join(specDir, "proposal.md"));
-    if (proposal) {
-      const emptySections = findEmptySections(proposal);
-      if (emptySections.length > 0) {
-        result.warnings.push(`Proposal has unfilled sections: ${emptySections.join(", ")}`);
-      }
-
-      // 3. Check against SEED.md constraints
-      const seed = await safeReadFile(path.join(cwd, SEED_FILE));
-      if (seed) {
-        const conflicts = checkSeedConflicts(proposal, seed);
-        if (conflicts.length > 0) {
-          result.warnings.push(...conflicts.map((c) => `SEED conflict: ${c}`));
-        }
-      }
-    }
-
-    // 4. Check design has architectural completeness
-    const design = await safeReadFile(path.join(specDir, "design.md"));
-    if (design) {
-      const missingDesignSections = checkDesignCompleteness(design);
-      if (missingDesignSections.length > 0) {
-        result.warnings.push(
-          `Design missing sections: ${missingDesignSections.join(", ")}`
-        );
-      }
-    }
-
-    // 5. Check tasks are actionable
-    const tasks = await safeReadFile(path.join(specDir, "tasks.md"));
-    if (tasks) {
-      const taskCount = (tasks.match(/- \[ \]/g) || []).length;
-      if (taskCount === 0) {
-        result.warnings.push("Tasks file has no unchecked items");
-      }
-    }
-  } catch (err) {
-    result.issues.push(`Validation error: ${err.message}`);
-  }
-
-  if (result.issues.length > 0) result.valid = false;
-
-  if (result.valid) {
-    spinner.succeed(`Spec valid: ${chalk.green(slug)}`);
-  } else {
-    spinner.fail(`Spec has issues: ${chalk.red(slug)}`);
-  }
-
-  return result;
-}
-
-/**
- * Archive a spec and evolve SEED.md with learned patterns.
- * This is the key feedback loop: completed specs inform future development.
- *
- * @param {string} slug - Spec slug
- * @param {string} cwd - Project root
- * @param {Object} opts
- * @param {Object} opts.cliAI - CLI's native AI for pattern extraction
- * @param {Object[]} opts.obsidianNotes - Related Obsidian notes
- */
-export async function archiveSpecWithEvolution(slug, cwd, opts = {}) {
-  const activeDir = path.join(cwd, ACTIVE_DIR, slug);
-  const archiveDir = path.join(
-    cwd,
-    ARCHIVE_DIR,
-    `${todayISO()}-${slug}`
-  );
-  const spinner = ora(`Archiving + evolving: ${chalk.cyan(slug)}`).start();
-
-  try {
-    await fs.access(activeDir);
-  } catch {
-    spinner.fail(`No active spec: ${slug}`);
-    return { success: false, error: "not-found" };
-  }
-
-  const hasOpenSpec = await isOpenSpecAvailable();
-
-  // 1. Read all spec files for pattern extraction
-  const specFiles = {};
-  for (const file of ["proposal.md", "design.md", "tasks.md"]) {
-    specFiles[file] = await safeReadFile(path.join(activeDir, file));
-  }
-
-  // 2. Archive via openspec CLI or locally
-  if (hasOpenSpec) {
-    const result = await runOpenSpec(`archive "${slug}"`, cwd);
-    if (!result.ok) {
-      // Fallback to local archiving
-      await localArchive(activeDir, archiveDir);
-    }
-  } else {
-    await localArchive(activeDir, archiveDir);
-  }
-
-  // 3. SEED.md Evolution — extract patterns from completed spec
-  spinner.text = "Evolving SEED.md with learned patterns...";
-  await evolveSeed(cwd, slug, specFiles, opts);
-
-  // 4. If Obsidian notes were related, mark them as archived
-  if (opts.obsidianNotes?.length) {
-    spinner.text = "Updating Obsidian context...";
-    // Return metadata for obsidian-bridge to sync back
-  }
-
-  spinner.succeed(`Archived: ${chalk.bold(path.basename(archiveDir))}`);
-  return {
-    success: true,
-    archivePath: archiveDir,
-    seedUpdated: true,
-  };
-}
-
-/**
- * Generate/update SEED.md from all archived specs + Obsidian decisions.
- * SEED.md is the accumulated architectural knowledge — the project's DNA.
- *
- * @param {string} cwd - Project root
- * @param {Object} opts
- * @param {Object} opts.cliAI - CLI's native AI
- * @param {Object[]} opts.decisionNotes - Obsidian notes tagged #decision
- * @param {string[]} opts.stack - Detected stack
- */
-export async function regenerateSeed(cwd, opts = {}) {
-  const spinner = ora("Regenerating SEED.md from archived specs + decisions...").start();
-  const hasOpenSpec = await isOpenSpecAvailable();
-
-  // 1. Collect archived spec patterns
-  const archivedPatterns = await collectArchivedPatterns(cwd);
-
-  // 2. Collect Obsidian decision notes
-  const decisions = opts.decisionNotes || [];
-
-  // 3. Load current SEED.md (if exists)
-  const currentSeed = await safeReadFile(path.join(cwd, SEED_FILE));
-
-  // 4. Try openspec CLI for seed generation
-  if (hasOpenSpec) {
-    const result = await runOpenSpec("seed --regenerate", cwd);
-    if (result.ok) {
-      spinner.text = "Enhancing openspec seed with Obsidian context...";
-      // Merge openspec-generated seed with Obsidian decisions
-      await enhanceSeedWithDecisions(cwd, decisions);
-      spinner.succeed("SEED.md regenerated via openspec + Obsidian context");
-      return { method: "openspec-cli", success: true };
-    }
-  }
-
-  // 5. Local generation with context
-  const seedContent = buildSeedContent({
-    archivedPatterns,
-    decisions,
-    currentSeed,
-    stack: opts.stack || [],
-  });
-
-  await fs.mkdir(path.join(cwd, SPECS_DIR), { recursive: true });
-  await fs.writeFile(path.join(cwd, SEED_FILE), seedContent, "utf8");
-
-  spinner.succeed("SEED.md regenerated from archived patterns + decisions");
-  return { method: "local", success: true };
-}
-
-/**
- * List all active specs with their validation status.
+ * Update OpenSpec agent instructions in the project.
+ * Called during `persistent update`.
  * @param {string} cwd
- * @returns {Promise<Object[]>}
  */
-export async function listActiveSpecs(cwd) {
-  const activeDir = path.join(cwd, ACTIVE_DIR);
-  try {
-    const entries = await fs.readdir(activeDir, { withFileTypes: true });
-    const specs = [];
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const specDir = path.join(activeDir, entry.name);
-
-      const hasProposal = await fileExists(path.join(specDir, "proposal.md"));
-      const hasDesign = await fileExists(path.join(specDir, "design.md"));
-      const hasTasks = await fileExists(path.join(specDir, "tasks.md"));
-
-      // Count completed tasks
-      const tasks = await safeReadFile(path.join(specDir, "tasks.md"));
-      const totalTasks = (tasks?.match(/- \[[ x]\]/g) || []).length;
-      const completedTasks = (tasks?.match(/- \[x\]/gi) || []).length;
-
-      specs.push({
-        slug: entry.name,
-        files: { proposal: hasProposal, design: hasDesign, tasks: hasTasks },
-        progress: totalTasks > 0
-          ? `${completedTasks}/${totalTasks}`
-          : "no tasks",
-      });
-    }
-
-    return specs;
-  } catch {
-    return [];
-  }
-}
-
-// ─── Obsidian ↔ OpenSpec Context Bridge ─────────────────────────────────────
-
-/**
- * Extract relevant Obsidian context for a spec feature.
- * Filters notes by relevance to the feature keyword.
- */
-function extractObsidianContext(notes, feature) {
-  if (!notes || !notes.length) return { relevant: [], decisions: [] };
-
-  const featureWords = feature.toLowerCase().split(/\s+/);
-
-  const relevant = notes.filter((note) => {
-    const content = (note.content || "").toLowerCase();
-    return featureWords.some((w) => content.includes(w));
-  });
-
-  const decisions = notes.filter((note) => {
-    const content = (note.content || "").toLowerCase();
-    return (
-      content.includes("#decision") ||
-      content.includes("#architecture") ||
-      content.includes("#pattern")
-    );
-  });
-
-  return { relevant: relevant.slice(0, 5), decisions: decisions.slice(0, 5) };
-}
-
-/**
- * Load constraints from SEED.md for spec validation.
- */
-async function loadSeedConstraints(cwd) {
-  const seed = await safeReadFile(path.join(cwd, SEED_FILE));
-  if (!seed) return { patterns: [], antiPatterns: [], constraints: [] };
-
-  const patterns = [];
-  const antiPatterns = [];
-  const constraints = [];
-
-  const lines = seed.split("\n");
-  let currentSection = "";
-
-  for (const line of lines) {
-    if (line.startsWith("## ")) currentSection = line.toLowerCase();
-    if (line.startsWith("- ") || line.startsWith("* ")) {
-      const item = line.slice(2).trim();
-      if (currentSection.includes("pattern") && !currentSection.includes("anti")) {
-        patterns.push(item);
-      } else if (currentSection.includes("anti")) {
-        antiPatterns.push(item);
-      } else if (currentSection.includes("constraint") || currentSection.includes("rule")) {
-        constraints.push(item);
-      }
-    }
+export async function updateOpenSpec(cwd) {
+  const { available } = await checkOpenSpec();
+  if (!available) {
+    console.log(chalk.dim("  OpenSpec not installed — skipping update."));
+    console.log(chalk.dim("  Install: npm install -g @fission-ai/openspec@latest"));
+    return;
   }
 
-  return { patterns, antiPatterns, constraints };
+  const spinner = ora("Updating OpenSpec agent instructions...").start();
+  const result = runOpenSpec(["update"], cwd);
+  spinner.succeed(result.ok ? "openspec update done" : "openspec update had warnings");
 }
 
-// ─── SEED Evolution Engine ──────────────────────────────────────────────────
+// ─── SEED.md (persistent-specific) ──────────────────────────────────────────
 
 /**
- * Evolve SEED.md after archiving a spec.
- * Extracts new patterns/decisions and merges them into SEED.md.
+ * Ensure SEED.md exists. Creates it with Obsidian decisions if provided.
+ * SEED.md is persistent's architectural DNA file — NOT part of OpenSpec.
+ *
+ * @param {string}   cwd
+ * @param {Object}   opts
+ * @param {string[]} opts.stack         - Detected stack keys
+ * @param {Object[]} opts.decisionNotes - Obsidian #decision notes
  */
-async function evolveSeed(cwd, slug, specFiles, opts = {}) {
+export async function ensureSeed(cwd, opts = {}) {
   const seedPath = path.join(cwd, SEED_FILE);
-  let currentSeed = (await safeReadFile(seedPath)) || buildEmptySeed();
+  await fs.mkdir(path.join(cwd, SPECS_DIR), { recursive: true });
 
-  // Extract patterns from completed spec
-  const newPatterns = extractPatternsFromSpec(specFiles);
+  const exists = await fileExists(seedPath);
+  if (exists) {
+    // Already exists — merge in any new Obsidian decisions
+    await mergeDecisionsIntoSeed(seedPath, opts.decisionNotes || []);
+    return;
+  }
 
-  if (opts.cliAI) {
-    // Use CLI AI to intelligently merge
-    const prompt = `
-You are updating a project's SEED.md (architectural knowledge base).
+  // Create fresh SEED.md
+  const content = buildSeedTemplate(opts.stack || [], opts.decisionNotes || []);
+  await fs.writeFile(seedPath, content, "utf8");
+  console.log(chalk.green("✓") + " SPECS/SEED.md created");
+}
 
-CURRENT SEED.md:
-${currentSeed}
+/**
+ * Merge Obsidian #decision notes into SEED.md without duplicating.
+ * Called after every bidirectional sync.
+ *
+ * @param {string}   seedPath
+ * @param {Object[]} decisionNotes - { rel: string, content: string }[]
+ */
+export async function mergeDecisionsIntoSeed(seedPath, decisionNotes) {
+  if (!decisionNotes.length) return;
 
-COMPLETED SPEC "${slug}":
-Proposal: ${specFiles["proposal.md"] || "N/A"}
-Design: ${specFiles["design.md"] || "N/A"}
+  const current = await fs.readFile(seedPath, "utf8").catch(() => "");
 
-TASK: Extract new patterns, decisions, constraints from this completed spec
-and merge them into SEED.md. Keep SEED.md concise. Don't duplicate.
-Output the complete updated SEED.md.
-`;
+  const toAdd = decisionNotes.filter((note) => {
+    // Don't add if first line of note already appears in SEED
+    const firstLine = (note.content || "").split("\n").find((l) => l.trim())?.trim();
+    return firstLine && !current.includes(firstLine);
+  });
+
+  if (!toAdd.length) return;
+
+  const section = `\n## Decisions (from Obsidian — ${isoDate()})\n${toAdd
+    .map((n) => {
+      const title = (n.rel || "note").replace(/\.md$/, "");
+      const firstLine = (n.content || "").split("\n").find((l) => l.trim())?.trim() || "";
+      return `- **${title}**: ${firstLine.slice(0, 120)}`;
+    })
+    .join("\n")}\n`;
+
+  await fs.appendFile(seedPath, section, "utf8");
+  console.log(chalk.green("✓") + ` SEED.md updated with ${toAdd.length} Obsidian decisions`);
+}
+
+/**
+ * Evolve SEED.md after an OpenSpec change is archived.
+ * Reads the archived change folder and extracts patterns.
+ *
+ * @param {string} cwd
+ * @param {string} changeId - e.g. "add-dark-mode" or "2025-01-23-add-dark-mode"
+ */
+export async function evolveSeedFromArchive(cwd, changeId) {
+  const seedPath = path.join(cwd, SEED_FILE);
+
+  // Read the archived change (OpenSpec puts it in openspec/changes/archive/<id>/)
+  const archiveBase = path.join(cwd, "openspec", "changes", "archive");
+  let changeDir = path.join(archiveBase, changeId);
+
+  // If exact match not found, try prefix match
+  if (!(await fileExists(changeDir))) {
     try {
-      const response = await opts.cliAI.generate({
-        prompt,
-        maxTokens: 1500,
-        temperature: 0,
-      });
-      await fs.writeFile(seedPath, response.text, "utf8");
-      return;
+      const entries = await fs.readdir(archiveBase, { withFileTypes: true });
+      const match = entries.find((e) => e.isDirectory() && e.name.includes(changeId));
+      if (match) changeDir = path.join(archiveBase, match.name);
     } catch {
-      // Fall through to static merge
+      console.log(chalk.dim(`  No archive found for change: ${changeId}`));
+      return;
     }
   }
 
-  // Static merge: append new patterns
-  if (newPatterns.length > 0) {
-    const patternsSection = `\n\n## Patterns from: ${slug} (${todayISO()})\n${newPatterns.map((p) => `- ${p}`).join("\n")}\n`;
-    currentSeed += patternsSection;
-    await fs.writeFile(seedPath, currentSeed, "utf8");
+  const design = await safeRead(path.join(changeDir, "design.md"));
+  const proposal = await safeRead(path.join(changeDir, "proposal.md"));
+
+  if (!design && !proposal) {
+    console.log(chalk.dim(`  No design/proposal found in archive: ${changeId}`));
+    return;
   }
+
+  // Extract patterns from design decisions
+  const patterns = extractPatternsFromDesign(design || "");
+
+  if (!patterns.length) {
+    console.log(chalk.dim(`  No extractable patterns in ${changeId}`));
+    return;
+  }
+
+  const current = await safeRead(seedPath) || buildSeedTemplate([], []);
+  const section = `\n## Patterns from: ${changeId} (${isoDate()})\n${patterns.map((p) => `- ${p}`).join("\n")}\n`;
+
+  await fs.writeFile(seedPath, current + section, "utf8");
+  console.log(chalk.green("✓") + ` SEED.md evolved from ${chalk.cyan(changeId)} (+${patterns.length} patterns)`);
 }
 
 /**
- * Collect patterns from all archived specs.
+ * Clean/deduplicate SEED.md — merge repeated pattern sections.
+ * Called by `persistent spec --seed-clean`.
+ * @param {string} cwd
  */
-async function collectArchivedPatterns(cwd) {
-  const archiveDir = path.join(cwd, ARCHIVE_DIR);
-  const patterns = [];
-
-  try {
-    const entries = await fs.readdir(archiveDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const design = await safeReadFile(
-        path.join(archiveDir, entry.name, "design.md")
-      );
-      if (design) {
-        patterns.push(...extractPatternsFromSpec({ "design.md": design }));
-      }
-    }
-  } catch {
-    // No archive yet
+export async function cleanSeed(cwd) {
+  const seedPath = path.join(cwd, SEED_FILE);
+  const content = await safeRead(seedPath);
+  if (!content) {
+    console.log(chalk.yellow("No SEED.md found."));
+    return;
   }
 
-  return patterns;
-}
-
-/**
- * Extract patterns from spec files.
- */
-function extractPatternsFromSpec(specFiles) {
-  const patterns = [];
-  const design = specFiles["design.md"] || "";
-
-  // Extract bullet points from key sections
-  const lines = design.split("\n");
+  // Collect all pattern lines across sections, deduplicate
+  const lines = content.split("\n");
+  const seen = new Set();
+  const deduped = [];
   let inPatternSection = false;
 
   for (const line of lines) {
     if (line.startsWith("## ")) {
-      const section = line.toLowerCase();
-      inPatternSection =
-        section.includes("pattern") ||
-        section.includes("constraint") ||
-        section.includes("decision") ||
-        section.includes("component");
+      inPatternSection = line.toLowerCase().includes("pattern");
+      deduped.push(line);
+      continue;
     }
-    if (inPatternSection && (line.startsWith("- ") || line.startsWith("* "))) {
-      patterns.push(line.slice(2).trim());
+
+    if (inPatternSection && line.startsWith("- ")) {
+      const key = line.trim().toLowerCase();
+      if (seen.has(key)) continue; // skip duplicate
+      seen.add(key);
+    }
+
+    deduped.push(line);
+  }
+
+  // Remove empty "Patterns from:" sections
+  const filtered = deduped.join("\n").replace(
+    /\n## Patterns from: [^\n]+\n(?=\n## |\n*$)/g,
+    "\n"
+  );
+
+  await fs.writeFile(seedPath, filtered.trim() + "\n", "utf8");
+  const removed = lines.length - filtered.split("\n").length;
+  console.log(chalk.green("✓") + ` SEED.md cleaned (${removed > 0 ? removed : 0} duplicate lines removed)`);
+}
+
+/**
+ * List OpenSpec changes (active + archived).
+ * @param {string} cwd
+ */
+export async function listActiveSpecs(cwd) {
+  const changesDir = path.join(cwd, "openspec", "changes");
+  const specs = [];
+
+  try {
+    const entries = await fs.readdir(changesDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name === "archive") continue;
+      const changeDir = path.join(changesDir, entry.name);
+      const tasks = await safeRead(path.join(changeDir, "tasks.md"));
+      const total = (tasks?.match(/- \[[ x]\]/gi) || []).length;
+      const done  = (tasks?.match(/- \[x\]/gi)    || []).length;
+
+      specs.push({
+        slug:     entry.name,
+        progress: total > 0 ? Math.round((done / total) * 100) : 0,
+        files:    total > 0 ? [`${done}/${total} tasks complete`] : ["no tasks yet"],
+      });
+    }
+  } catch {
+    // openspec/ not initialized yet
+  }
+
+  return specs;
+}
+
+/**
+ * Print OpenSpec slash command reference for the user's agent.
+ * This is how users actually interact with OpenSpec — not through persistent.
+ *
+ * @param {string} agentId
+ */
+export function printOpenSpecWorkflow(agentId) {
+  console.log(chalk.bold("\nOpenSpec workflow (run inside your agent):"));
+  console.log(chalk.dim('  /opsx:new "feature name"   — start a new change'));
+  console.log(chalk.dim("  /opsx:ff                   — generate proposal + design + tasks"));
+  console.log(chalk.dim("  /opsx:apply                — implement tasks"));
+  console.log(chalk.dim("  /opsx:archive              — archive completed change → evolves SEED.md"));
+  console.log(chalk.dim("  /opsx:onboard              — first-time walkthrough\n"));
+
+  if (agentId === "cursor" || agentId === "windsurf") {
+    console.log(chalk.dim("  Tip: OpenSpec slash commands are registered in your agent automatically.\n"));
+  }
+}
+
+// ─── Context helpers for Obsidian → OpenSpec bridge ────────────────────────
+
+/**
+ * Format Obsidian spec/decision notes as a context block to prepend
+ * to MEMORY/INDEX.md so the agent reads them before running /opsx:new.
+ *
+ * @param {Object[]} specNotes     - Obsidian notes tagged #spec
+ * @param {Object[]} decisionNotes - Obsidian notes tagged #decision or #architecture
+ * @returns {string}               - Markdown block to prepend
+ */
+export function buildObsidianContextBlock(specNotes, decisionNotes) {
+  if (!specNotes.length && !decisionNotes.length) return "";
+
+  const lines = ["## obsidian-context-for-openspec", ""];
+
+  if (specNotes.length) {
+    lines.push("### Pending spec ideas (from vault #spec tags)");
+    for (const note of specNotes.slice(0, 5)) {
+      const firstLine = (note.content || "").split("\n").find((l) => l.trim()) || note.rel;
+      lines.push(`- ${note.rel}: ${firstLine.slice(0, 100)}`);
+    }
+    lines.push("");
+  }
+
+  if (decisionNotes.length) {
+    lines.push("### Architectural decisions (from vault #decision tags)");
+    for (const note of decisionNotes.slice(0, 5)) {
+      const firstLine = (note.content || "").split("\n").find((l) => l.trim()) || note.rel;
+      lines.push(`- ${note.rel}: ${firstLine.slice(0, 100)}`);
+    }
+    lines.push("");
+  }
+
+  lines.push(
+    "> These come from your Obsidian vault. Reference them when running `/opsx:new`.",
+    ""
+  );
+
+  return lines.join("\n");
+}
+
+// ─── SEED template ──────────────────────────────────────────────────────────
+
+function buildSeedTemplate(stack, decisionNotes) {
+  const stackSection = stack.length
+    ? `## Stack\n${stack.map((s) => `- ${s}`).join("\n")}\n`
+    : "";
+
+  const decisionsSection = decisionNotes.length
+    ? `## Decisions (from Obsidian)\n${decisionNotes
+        .slice(0, 10)
+        .map((n) => `- ${(n.rel || "note").replace(/\.md$/, "")}: ${(n.content || "").split("\n").find((l) => l.trim())?.slice(0, 120) || ""}`)
+        .join("\n")}\n`
+    : "";
+
+  return `# SEED — Architectural DNA
+> Maintained by persistent · evolves as OpenSpec changes are archived
+> Read by your agent before every coding session
+
+${stackSection}
+## Patterns
+<!-- Best practices learned from completed OpenSpec changes -->
+<!-- Run: persistent spec --seed-evolve <change-id> to update -->
+
+## Anti-Patterns
+<!-- What NOT to do — learned from past mistakes -->
+
+## Constraints
+<!-- Hard rules all implementations must follow -->
+
+${decisionsSection}
+## References
+<!-- Docs, ADRs, related OpenSpec specs -->
+
+---
+How this file evolves:
+1. You complete + archive an OpenSpec change (/opsx:archive)
+2. Run: persistent spec --seed-evolve <change-id>
+3. Run: persistent sync  (merges Obsidian #decision notes)
+4. Run: persistent spec --seed-clean  (deduplicate)
+`;
+}
+
+// ─── Internal helpers ────────────────────────────────────────────────────────
+
+function extractPatternsFromDesign(design) {
+  const patterns = [];
+  const lines = design.split("\n");
+  let inSection = false;
+
+  for (const line of lines) {
+    if (line.startsWith("## ") || line.startsWith("### ")) {
+      const lower = line.toLowerCase();
+      inSection = lower.includes("pattern") || lower.includes("decision") || lower.includes("constraint");
+    }
+    if (inSection && (line.startsWith("- ") || line.startsWith("* "))) {
+      const text = line.slice(2).trim();
+      if (text.length > 10) patterns.push(text);
     }
   }
 
   return patterns;
 }
 
-// ─── AI-Driven Spec Generation ──────────────────────────────────────────────
-
-async function generateAIProposal(feature, specDir, context) {
-  const { cliAI, obsidianContext, seedConstraints, stack } = context;
-
-  const obsidianSnippet =
-    obsidianContext.relevant.length > 0
-      ? obsidianContext.relevant
-          .map((n) => `Note: ${n.rel || "untitled"}\n${(n.content || "").slice(0, 300)}`)
-          .join("\n---\n")
-      : "No relevant Obsidian notes.";
-
-  const seedSnippet =
-    seedConstraints.constraints.length > 0
-      ? `Existing constraints:\n${seedConstraints.constraints.map((c) => `- ${c}`).join("\n")}`
-      : "No SEED.md constraints yet.";
-
-  const prompt = `
-Generate OpenSpec SDD files for feature: "${feature}"
-
-STACK: ${stack.join(", ")}
-
-OBSIDIAN CONTEXT (related notes from user's vault):
-${obsidianSnippet}
-
-SEED CONSTRAINTS (must comply):
-${seedSnippet}
-
-Generate three files:
-
-1. proposal.md — problem, solution, scope, open-questions
-2. design.md — data-model, api-surface, components, constraints, error-states
-3. tasks.md — actionable checklist
-
-Make them specific to this stack and respect existing constraints.
-Output each file clearly separated with === FILENAME === markers.
-`;
-
-  try {
-    const response = await cliAI.generate({
-      prompt,
-      maxTokens: 2000,
-      temperature: 0,
-    });
-
-    // Parse the AI response into separate files
-    const files = parseMultiFileResponse(response.text, [
-      "proposal.md",
-      "design.md",
-      "tasks.md",
-    ]);
-
-    for (const [filename, content] of Object.entries(files)) {
-      await fs.writeFile(path.join(specDir, filename), content, "utf8");
-    }
-  } catch {
-    // Fallback to static
-    await generateStaticProposal(feature, specDir, context);
-  }
-}
-
-async function generateStaticProposal(feature, specDir, context) {
-  const { obsidianContext, seedConstraints, stack } = context;
-
-  const constraintSection =
-    seedConstraints.constraints.length > 0
-      ? seedConstraints.constraints.map((c) => `- ${c}`).join("\n")
-      : "<!-- No SEED.md constraints yet -->";
-
-  const obsidianRef =
-    obsidianContext.relevant.length > 0
-      ? obsidianContext.relevant.map((n) => `- ${n.rel || "note"}`).join("\n")
-      : "<!-- No related Obsidian notes -->";
-
-  await fs.writeFile(
-    path.join(specDir, "proposal.md"),
-    `# proposal: ${feature}
-date: ${todayISO()}
-status: draft
-stack: ${stack.join(", ")}
-
-## problem
-<!-- What problem does this solve? -->
-
-## solution
-<!-- High-level approach -->
-
-## scope
-<!-- What's in / out -->
-
-## seed-constraints
-${constraintSection}
-
-## obsidian-context
-${obsidianRef}
-
-## open-questions
-<!-- Decisions to be made before implement -->
-`,
-    "utf8"
-  );
-
-  await fs.writeFile(
-    path.join(specDir, "design.md"),
-    `# design: ${feature}
-date: ${todayISO()}
-stack: ${stack.join(", ")}
-
-## data-model
-<!-- Schema changes, new tables/fields -->
-
-## api-surface
-<!-- New endpoints, server actions, mutations -->
-
-## components
-<!-- UI components affected or added -->
-
-## constraints
-${constraintSection}
-
-## error-states
-<!-- What can go wrong, how it's handled -->
-`,
-    "utf8"
-  );
-
-  await fs.writeFile(
-    path.join(specDir, "tasks.md"),
-    `# tasks: ${feature}
-date: ${todayISO()}
-status: pending
-
-## checklist
-- [ ] Fill proposal.md problem + solution
-- [ ] Fill design.md data-model + api-surface
-- [ ] Implement feature per design.md
-- [ ] Write tests (unit + integration)
-- [ ] Update SEED.md if new patterns emerge
-- [ ] Archive when complete
-`,
-    "utf8"
-  );
-}
-
-// ─── SEED.md Building ───────────────────────────────────────────────────────
-
-async function generateSeedFromContext(cwd, opts = {}) {
-  const seedContent = buildSeedContent({
-    archivedPatterns: [],
-    decisions: opts.obsidianContext?.decisions || [],
-    currentSeed: null,
-    stack: opts.stack || [],
-  });
-
-  await fs.mkdir(path.join(cwd, SPECS_DIR), { recursive: true });
-  await fs.writeFile(path.join(cwd, SEED_FILE), seedContent, "utf8");
-}
-
-async function enhanceSeedWithContext(cwd, opts = {}) {
-  const seedPath = path.join(cwd, SEED_FILE);
-  const current = await safeReadFile(seedPath);
-  if (!current) {
-    await generateSeedFromContext(cwd, opts);
-    return;
-  }
-
-  // Append stack-specific context if not already present
-  const stack = opts.stack || [];
-  if (stack.length > 0) {
-    const stackSection = `\n## Stack\n${stack.map((s) => `- ${s}`).join("\n")}\n`;
-    if (!current.includes("## Stack")) {
-      await fs.writeFile(seedPath, current + stackSection, "utf8");
-    }
-  }
-}
-
-async function enhanceSeedWithDecisions(cwd, decisions) {
-  if (!decisions.length) return;
-
-  const seedPath = path.join(cwd, SEED_FILE);
-  const current = await safeReadFile(seedPath);
-  if (!current) return;
-
-  const decisionSection = `\n## Decisions (from Obsidian)\n${decisions
-    .map((d) => `- ${d.rel || "note"}: ${(d.content || "").split("\n")[0].slice(0, 100)}`)
-    .join("\n")}\n`;
-
-  if (!current.includes("## Decisions (from Obsidian)")) {
-    await fs.writeFile(seedPath, current + decisionSection, "utf8");
-  }
-}
-
-function buildSeedContent({ archivedPatterns, decisions, currentSeed, stack }) {
-  const parts = [
-    `# SEED — Architectural DNA`,
-    `> Generated by persistent + OpenSpec · ${todayISO()}`,
-    `> This file evolves with every archived spec and Obsidian decision.`,
-    "",
-  ];
-
-  if (stack.length > 0) {
-    parts.push(`## Stack`, ...stack.map((s) => `- ${s}`), "");
-  }
-
-  parts.push(
-    `## Patterns`,
-    archivedPatterns.length > 0
-      ? archivedPatterns.map((p) => `- ${p}`).join("\n")
-      : "<!-- Patterns emerge as specs are completed and archived -->",
-    ""
-  );
-
-  parts.push(
-    `## Anti-Patterns`,
-    "<!-- What NOT to do — learned from past mistakes -->",
-    ""
-  );
-
-  parts.push(
-    `## Decisions`,
-    decisions.length > 0
-      ? decisions
-          .map((d) => `- ${d.rel || "decision"}: ${(d.content || "").split("\n")[0].slice(0, 100)}`)
-          .join("\n")
-      : "<!-- Key decisions — synced from Obsidian #decision notes -->",
-    ""
-  );
-
-  parts.push(
-    `## Constraints`,
-    "<!-- Hard rules that all specs and implementations must follow -->",
-    "",
-    `## References`,
-    "<!-- Links to relevant docs, ADRs, external specs -->",
-    ""
-  );
-
-  return parts.join("\n");
-}
-
-function buildEmptySeed() {
-  return buildSeedContent({
-    archivedPatterns: [],
-    decisions: [],
-    currentSeed: null,
-    stack: [],
-  });
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function slugify(str) {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .slice(0, 50);
-}
-
-function todayISO() {
+function isoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function safeReadFile(filePath) {
-  try {
-    return await fs.readFile(filePath, "utf8");
-  } catch {
-    return null;
-  }
+async function fileExists(p) {
+  try { await fs.access(p); return true; } catch { return false; }
 }
 
-async function fileExists(filePath) {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
+async function safeRead(p) {
+  try { return await fs.readFile(p, "utf8"); } catch { return null; }
 }
 
-function findEmptySections(markdown) {
-  const sections = [];
-  const lines = markdown.split("\n");
+// ─── Backward-compat exports (spec-runner.js calls these) ───────────────────
 
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith("## ")) {
-      const title = lines[i].slice(3).trim();
-      // Check if next non-empty line is a comment or another header
-      let j = i + 1;
-      while (j < lines.length && lines[j].trim() === "") j++;
-      if (
-        j >= lines.length ||
-        lines[j].startsWith("## ") ||
-        lines[j].trim().startsWith("<!--")
-      ) {
-        sections.push(title);
-      }
-    }
+export { listActiveSpecs as listActiveSpecs };
+
+/**
+ * Backward-compatible: called from spec-runner.js's runSpec().
+ * Now just prints OpenSpec workflow instructions since OpenSpec CLI owns spec creation.
+ */
+export async function proposeSpec(feature, cwd, opts = {}) {
+  const { available } = await checkOpenSpec();
+
+  if (!available) {
+    console.log(chalk.red("✗ OpenSpec not installed."));
+    console.log(chalk.dim("  Install: npm install -g @fission-ai/openspec@latest"));
+    console.log(chalk.dim("  Then run openspec init in your project.\n"));
+    return { slug: null };
   }
 
-  return sections;
-}
+  // Feature slug for reference
+  const slug = feature.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
 
-function checkSeedConflicts(proposal, seed) {
-  const conflicts = [];
-  // Extract anti-patterns from SEED
-  const lines = seed.split("\n");
-  let inAntiPatterns = false;
+  console.log(chalk.bold("\nOpenSpec is installed. To create this spec:"));
+  console.log(chalk.cyan(`  /opsx:new "${feature}"`));
+  console.log(chalk.dim("  Then: /opsx:ff  to generate proposal + design + tasks"));
+  console.log(chalk.dim("  Then: /opsx:apply  to implement"));
+  console.log(chalk.dim("  Then: /opsx:archive  to archive and evolve SEED.md\n"));
 
-  for (const line of lines) {
-    if (line.startsWith("## ")) {
-      inAntiPatterns = line.toLowerCase().includes("anti");
-    }
-    if (inAntiPatterns && line.startsWith("- ")) {
-      const antiPattern = line.slice(2).trim().toLowerCase();
-      if (proposal.toLowerCase().includes(antiPattern.slice(0, 30))) {
-        conflicts.push(`Proposal may conflict with anti-pattern: "${antiPattern}"`);
-      }
-    }
+  // If Obsidian context exists, remind user
+  const memoryPath = path.join(cwd, "MEMORY", "INDEX.md");
+  const hasMemory = await fileExists(memoryPath);
+  if (hasMemory) {
+    console.log(chalk.dim("  Tip: Your agent will read MEMORY/INDEX.md for Obsidian context."));
+    console.log(chalk.dim("  Run: persistent sync  to refresh Obsidian context first.\n"));
   }
 
-  return conflicts;
+  return { slug, method: "openspec-cli" };
 }
 
-function checkDesignCompleteness(design) {
-  const required = ["data-model", "api-surface", "components", "constraints", "error-states"];
-  const present = design
-    .split("\n")
-    .filter((l) => l.startsWith("## "))
-    .map((l) => l.slice(3).trim().toLowerCase());
-
-  return required.filter((r) => !present.some((p) => p.includes(r)));
-}
-
-function extractWarnings(stdout) {
-  return stdout
-    .split("\n")
-    .filter((l) => l.includes("WARN"))
-    .map((l) => l.replace(/.*WARN:?\s*/, "").trim());
-}
-
-function parseMultiFileResponse(text, expectedFiles) {
-  const files = {};
-  const sections = text.split(/===\s*(\S+\.md)\s*===/);
-
-  // Try marker-based parsing first
-  for (let i = 1; i < sections.length; i += 2) {
-    const filename = sections[i].trim();
-    const content = (sections[i + 1] || "").trim();
-    if (expectedFiles.includes(filename)) {
-      files[filename] = content;
-    }
+export async function validateSpec(slug, cwd) {
+  const { available } = await checkOpenSpec();
+  if (!available) {
+    return { valid: false, issues: ["OpenSpec not installed"], warnings: [] };
   }
 
-  // If marker parsing failed, try header-based
-  if (Object.keys(files).length < expectedFiles.length) {
-    for (const expected of expectedFiles) {
-      if (!files[expected]) {
-        const headerMatch = text.match(
-          new RegExp(`#\\s*${expected.replace(".md", "")}[:\\s]([\\s\\S]*?)(?=\\n#\\s*\\w+\\.md|$)`, "i")
-        );
-        if (headerMatch) {
-          files[expected] = headerMatch[0].trim();
-        }
-      }
-    }
-  }
-
-  // Fill any still-missing with empty templates
-  for (const expected of expectedFiles) {
-    if (!files[expected]) {
-      files[expected] = `# ${expected.replace(".md", "")}\n\n<!-- AI generation incomplete — fill manually -->\n`;
-    }
-  }
-
-  return files;
+  // OpenSpec handles its own validation through the agent slash commands
+  console.log(chalk.dim(`  Validation for OpenSpec changes is done via your agent:`));
+  console.log(chalk.dim(`  Review the spec files in openspec/changes/${slug}/`));
+  return { valid: true, issues: [], warnings: [] };
 }
 
-export { slugify, todayISO, safeReadFile, loadSeedConstraints };
+export async function archiveSpecWithEvolution(slug, cwd, opts = {}) {
+  const { available } = await checkOpenSpec();
+
+  if (!available) {
+    console.log(chalk.red("✗ OpenSpec not installed — cannot archive."));
+    return { success: false };
+  }
+
+  console.log(chalk.dim("  Archive via your agent: /opsx:archive"));
+  console.log(chalk.dim("  Then evolve SEED.md: persistent spec --seed-evolve " + slug));
+  return { success: true };
+}
+
+export async function regenerateSeed(cwd, opts = {}) {
+  await ensureSeed(cwd, opts);
+}

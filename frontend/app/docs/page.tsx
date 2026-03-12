@@ -231,25 +231,61 @@ persistent sync --pin "Projects/App"    # pin a vault folder to always pull`}</C
 
           {/* ── analyze ── */}
           <H2 id="analyze">persistent analyze</H2>
-          <P>AI-analyze your actual code and generate project-specific skill files. Requires Anthropic API key.</P>
+          <P>AI deep-dive into your actual code. Generates <A>project-specific</A> skill files that reflect how YOUR project uses each library.</P>
           <Code>{`persistent analyze                        # analyze all detected skills
 persistent analyze --key sk-ant-...      # pass API key directly
 persistent analyze --force               # regenerate even if files exist
-persistent analyze --only stripe/node    # target specific skills`}</Code>
-          <P>Uses <code style={{color:"#888"}}>claude-haiku-4-5</code> — fast and cheap. Set <code style={{color:"#888"}}>ANTHROPIC_API_KEY</code> in env to avoid passing --key every time.</P>
+persistent analyze --only stripe/node    # target specific dependencies`}</Code>
+
+          <H3>How it differs from init</H3>
+          <ul style={{ paddingLeft: 20, marginBottom: 16 }}>
+            {[
+              "init → broad bootstrap, 2-3 minutes total",
+              "analyze → deep code tracing, 5-10 minutes per skill, much more detailed",
+              "init → generic best practices",
+              "analyze → your project's actual patterns and gotchas",
+              "init → recommended first, regenerate rarely",
+              "analyze → recommended after stack is mature, run on demand",
+            ].map((item) => (
+              <li key={item} className="font-mono mb-1" style={{ color: "#555", fontSize: 12.5, lineHeight: 1.8 }}>
+                <G>→</G> {item}
+              </li>
+            ))}
+          </ul>
+
+          <H3>What analyze generates</H3>
+          <ul style={{ paddingLeft: 20, marginBottom: 16 }}>
+            {[
+              "How this project uses each dependency (not generic docs)",
+              "Actual import patterns traced from source files",
+              "Custom abstractions and wrappers built on top of libraries",
+              "Project-specific configuration choices and why they matter",
+              "Naming conventions and error handling patterns",
+              "Version-specific gotchas for your installed versions",
+              "Conflicts with other libraries in your stack",
+              "Code examples pulled directly from your source",
+              "Suggestions for architectural improvements",
+            ].map((item) => (
+              <li key={item} className="font-mono mb-1" style={{ color: "#555", fontSize: 12.5, lineHeight: 1.8 }}>
+                <G>→</G> {item}
+              </li>
+            ))}
+          </ul>
+
+          <P>Uses <code style={{color:"#888"}}>claude-haiku-4-5</code> via Anthropic API — fast and cheap. Set <code style={{color:"#888"}}>ANTHROPIC_API_KEY</code> in env to avoid passing --key every time.</P>
 
           {/* ── slash commands ── */}
           <H2 id="slash-commands">Slash commands</H2>
           <P>For <G>Claude Code</G> and <G>OpenCode</G>, persistent init creates native slash commands. Type <code style={{color:"#888"}}>/persistent-</code> in the AI chat to see them.</P>
-          <P>These are <A>AI-native</A> — they instruct the AI agent itself to analyze your code and generate context, using the three-tool trinity (OpenSpec + skills.sh + Obsidian).</P>
+          <P>These are <A>AI-native</A> — the AI agent itself executes these commands by reading files and analyzing code. They appear as instant suggestions in the chat interface.</P>
 
           <div style={{ border: "1px solid #141414", borderRadius: 6, overflow: "hidden", marginBottom: 20 }}>
             {[
-              { cmd: "/persistent-init", desc: "AI scans codebase → writes to agent's context file (CLAUDE.md, etc.) + SPECS/SEED.md + .skills/" },
-              { cmd: "/persistent-spec", desc: "AI reads codebase + SEED.md → generates structured specs via OpenSpec lifecycle" },
-              { cmd: "/persistent-skill", desc: "AI analyzes code patterns → creates/evolves project-specific skills via skills.sh" },
-              { cmd: "/persistent-sync", desc: "AI reads Obsidian notes → routes by tag (#spec → OpenSpec, #pattern → skills.sh, #bug → memory)" },
-              { cmd: "/persistent-analyze", desc: "AI deep-dives codebase → generates detailed skill files with project-specific patterns" },
+              { cmd: "/persistent-init", desc: "AI reads package.json + codebase → generates CLAUDE.md context + SPECS/SEED.md + .skills/ from scratch (re-bootstrap)" },
+              { cmd: "/persistent-spec", desc: "AI generates or validates specs via OpenSpec. Read SPECS/SEED.md + MEMORY/INDEX.md for context." },
+              { cmd: "/persistent-skill", desc: "AI analyzes your actual code patterns → creates/evolves project-specific skills with examples from your source" },
+              { cmd: "/persistent-sync", desc: "AI reads MEMORY/INDEX.md + Obsidian vault notes → routes by tag → updates SEED.md and skills" },
+              { cmd: "/persistent-analyze", desc: "AI performs deep code analysis → generates detailed skill files with architecture insights and gotchas" },
             ].map(({ cmd, desc }) => (
               <div key={cmd} style={{ borderBottom: "1px solid #141414", padding: "12px 16px", display: "grid", gridTemplateColumns: "200px 1fr", gap: 16 }}>
                 <code className="font-mono font-semibold" style={{ color: "#00e87a", fontSize: 12 }}>{cmd}</code>
@@ -258,7 +294,38 @@ persistent analyze --only stripe/node    # target specific skills`}</Code>
             ))}
           </div>
 
-          <P>Supported agents: Claude Code (<code style={{color:"#888"}}>.claude/commands/</code>) and OpenCode (<code style={{color:"#888"}}>.opencode/commands/</code>). Other agents use CLI commands directly.</P>
+          <H3>Where commands are stored</H3>
+          <P>After <code style={{color:"#888"}}>persistent init</code>, slash commands are written to:</P>
+          <Code lang="text">{`.claude/commands/
+├── persistent-init.md
+├── persistent-spec.md
+├── persistent-skill.md
+├── persistent-sync.md
+└── persistent-analyze.md
+
+.opencode/commands/
+└── (same files)
+
+# Each .md file contains instructions for the AI to read and execute
+# The AI reads these when you type /persistent-* in the chat`}</Code>
+
+          <H3>How they work</H3>
+          <ul style={{ paddingLeft: 20, marginBottom: 16 }}>
+            {[
+              "You type /persistent-spec in Claude Code/OpenCode chat",
+              "AI reads the markdown file for instructions",
+              "AI reads your codebase, SPECS/SEED.md, MEMORY/INDEX.md per instructions",
+              "AI generates context (specs, skills, config updates)",
+              "AI writes files to your project",
+              "Result: faster, more context-aware interactions with the AI",
+            ].map((item) => (
+              <li key={item} className="font-mono mb-1" style={{ color: "#555", fontSize: 12.5, lineHeight: 1.8 }}>
+                <A>→</A> {item}
+              </li>
+            ))}
+          </ul>
+
+          <P>Supported agents: <G>Claude Code</G> (<code style={{color:"#888"}}>.claude/commands/</code>) and <G>OpenCode</G> (<code style={{color:"#888"}}>.opencode/commands/</code>). Other agents (Cursor, Copilot, etc.) use CLI commands directly from terminal.</P>
 
           {/* ── config ── */}
           <H2 id="config">Config file (.persistent.json)</H2>

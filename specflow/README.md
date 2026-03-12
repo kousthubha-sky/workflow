@@ -10,6 +10,8 @@ Detects your stack → maps skills → writes 3 context-dense MD files → patch
 
 Powered by the **three-tool trinity**: [OpenSpec](https://openspec.dev) for specs, [Skills.sh](https://skills.sh) for skills, and [Obsidian](https://obsidian.md) as the bidirectional context layer.
 
+**New in 0.2.5**: `/persistent-*` slash commands, bidirectional Obsidian sync with tag routing, project-specific AI code analysis, and agent auto-detection.
+
 ---
 
 ## What it does
@@ -122,13 +124,22 @@ Sync routes Obsidian notes by tag:
 
 After sync, completed specs and evolved skills are **written back** to your vault as markdown notes.
 
-### `analyze` — AI code analysis
+### `analyze` — Deep AI code analysis
 
 ```bash
 persistent analyze [--key <anthropic-key>] [--force] [--only <skills>]
+persistent analyze --only nextjs,prisma  # target specific dependencies
 ```
 
-Uses Anthropic's API to analyze your actual code and generate project-specific skill files. Requires an API key.
+Deep-dives into your codebase (not just package.json) using Anthropic's API to generate **project-specific** skill files. Traces actual imports, patterns, configuration, custom abstractions. Requires `ANTHROPIC_API_KEY` environment variable or `--key` flag.
+
+**What it generates:**
+- How THIS project uses each dependency (with code examples)
+- Custom patterns and abstractions built on top of libraries
+- Project-specific gotchas and configuration choices
+- Naming conventions and error handling patterns
+
+**Use case:** After initial `persistent init`, run `analyze` to generate truly tailored skills that reflect your project's architecture.
 
 ### `update` — Re-patch agent file
 
@@ -137,6 +148,24 @@ persistent update [--agent <id>]
 ```
 
 Re-generates the agent context file from current config. Run after manual config changes or after adding a new agent.
+
+---
+
+## Slash Commands (Claude Code & OpenCode)
+
+After `persistent init`, slash commands appear in Claude Code and OpenCode editors.
+
+| Command | What it does |
+|---|---|
+| `/persistent-init` | AI reads codebase → updates agent context + SPECS/SEED.md + .skills/ |
+| `/persistent-spec` | AI generates or validates specs via OpenSpec lifecycle |
+| `/persistent-skill` | AI analyzes patterns → creates/evolves project-specific skills |
+| `/persistent-sync` | AI routes Obsidian notes by tag (#spec → OpenSpec, #pattern → skills, etc.) |
+| `/persistent-analyze` | AI deep-dives code → generates detailed skill files |
+
+These are written to:
+- Claude Code: `.claude/commands/persistent-*.md`
+- OpenCode: `.opencode/commands/persistent-*.md`
 
 ---
 

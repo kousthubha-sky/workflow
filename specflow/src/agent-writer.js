@@ -1,12 +1,10 @@
 /**
  * agent-writer.js
- * Detects which AI agent is active in the project.
- * Writes or patches the agent's context file (CLAUDE.md, agents.md, etc.)
- * with an [persistent] block containing the context-dense summary.
+ * Detects which AI agent is active and writes/patches its context file.
  *
  * Design rules:
- *  - Never clobber existing agent file content
- *  - Idempotent: re-running replaces only the [persistent] block
+ *  - Idempotent: re-running replaces ONLY the persistent block, never the whole file
+ *  - Sentinel blocks: <!-- persistent:start --> / <!-- persistent:end -->
  *  - Walks UP from cwd to find agent markers (monorepo-aware)
  *  - Supports all major agents — see AGENT_FILE_MAP
  */
@@ -15,7 +13,6 @@ import fs from "fs/promises";
 import path from "path";
 import chalk from "chalk";
 
-/** Map agent id → integration file path relative to project/agent root */
 export const AGENT_FILE_MAP = {
   "claude-code": "CLAUDE.md",
   "opencode":    "agents.md",
@@ -30,7 +27,6 @@ export const AGENT_FILE_MAP = {
 const BLOCK_START = "<!-- persistent:start -->";
 const BLOCK_END   = "<!-- persistent:end -->";
 
-// Agent marker files — presence identifies the agent
 const AGENT_MARKERS = [
   { file: "CLAUDE.md",                         agent: "claude-code" },
   { file: ".claude",                            agent: "claude-code" },
@@ -45,10 +41,6 @@ const AGENT_MARKERS = [
   { file: ".aider.conf.yml",                    agent: "aider"       },
 ];
 
-/**
- * Walk UP the directory tree from startDir to find agent marker files.
- * Monorepo-aware: running from frontend/ finds CLAUDE.md at repo root.
- */
 export async function detectAgent(startDir) {
   let dir = path.resolve(startDir);
   const fsRoot = path.parse(dir).root;
@@ -68,77 +60,86 @@ export async function detectAgent(startDir) {
   return { agent: "generic", root: startDir };
 }
 
-/**
- * Smart agent detection: check env vars first, then fall back to marker files.
- * Returns the agent user is most likely actively using.
- */
 export async function detectAgentWithEnv(startDir) {
   const env = process.env;
-
-  if (env.OPENCODE === "1" || env.OPENCODE === "true") {
+  if (env.OPENCODE === "1" || env.OPENCODE === "true")
     return { agent: "opencode", root: startDir };
-  }
-  if (env.CLAUDE === "1" || env.CLAUDE === "true" || env.CLAUDE_API_KEY) {
+  if (env.CLAUDE === "1" || env.CLAUDE === "true" || env.CLAUDE_API_KEY)
     return { agent: "claude-code", root: startDir };
-  }
-  if (env.CURSOR === "1" || env.CURSOR === "true") {
+  if (env.CURSOR === "1" || env.CURSOR === "true")
     return { agent: "cursor", root: startDir };
-  }
-  if (env.WINDSURF === "1" || env.WINDSURF === "true") {
+  if (env.WINDSURF === "1" || env.WINDSURF === "true")
     return { agent: "windsurf", root: startDir };
-  }
-  if (env.COPILOT === "1" || env.COPILOT === "true") {
+  if (env.COPILOT === "1" || env.COPILOT === "true")
     return { agent: "copilot", root: startDir };
-  }
-  if (env.AIDER === "1" || env.AIDER === "true") {
+  if (env.AIDER === "1" || env.AIDER === "true")
     return { agent: "aider", root: startDir };
-  }
-  if (env.CONTINUE === "1" || env.CONTINUE === "true") {
+  if (env.CONTINUE === "1" || env.CONTINUE === "true")
     return { agent: "continue", root: startDir };
-  }
-
   return detectAgent(startDir);
 }
 
 /**
- * Build the persistent context block — context-dense, low token.
+ * Build the persistent context block injected into the agent file.
+ *
+ * References the REAL tools:
+ *   - openspec/    ← owned by @fission-ai/openspec CLI
+ *   - .skills/     ← owned by skills.sh CLI
+ *   - MEMORY/      ← synced from Obsidian vault by persistent
+ *   - SPECS/SEED.md ← persistent's architectural DNA layer
  */
 export function buildBlock(cfg) {
-  const stack      = (cfg.stack   ?? []).join("|") || "unknown";
-  const skills     = (cfg.skills  ?? []).join(",") || "none";
-  const activeSpec = cfg.activeSpec   ?? "none";
-  const lastSync   = cfg.lastSync     ? cfg.lastSync.slice(0, 10) : "never";
-  const obsidian   = cfg.obsidianPath ?? "not-configured";
-  const agents     = (cfg.agents  ?? [cfg.agent]).filter(Boolean).join(",");
+  const stack     = (cfg.stack   ?? []).join("|") || "unknown";
+  const skills    = (cfg.skills  ?? []).join(",") || "none";
+  const lastSync  = cfg.lastSync ? cfg.lastSync.slice(0, 10) : "never";
+  const obsidian  = cfg.obsidianPath ?? "not-configured";
+  const agents    = (cfg.agents ?? [cfg.agent]).filter(Boolean).join(",");
 
   return `${BLOCK_START}
 # persistent-ctx
 > stack:${stack}
 > agents:[${agents}]
 > skills:[${skills}]
-> sdd:enabled · spec:${activeSpec}
-> memory-sync:${lastSync}
+> obsidian-sync:${lastSync}
 
-## constraints
-- follow SPECS/SEED.md patterns and anti-patterns
-- check MEMORY/INDEX.md before starting long tasks
-- new features: run \`persistent spec "<feature>"\` first
+## context-files (read before every task)
+| file | purpose |
+|------|---------|
+| \`MEMORY/INDEX.md\` | Hot notes from Obsidian vault — personal context |
+| \`SPECS/SEED.md\` | Architectural DNA — patterns, anti-patterns, constraints |
+| \`.skills/\` | Skills from skills.sh — one file per library |
+| \`openspec/specs/\` | Living requirements (managed by OpenSpec) |
+| \`openspec/changes/\` | Proposed + active changes (managed by OpenSpec) |
 
-## sdd-cycle
-propose → apply → archive (specs in SPECS/)
+## workflow
+Before starting any feature:
+1. Run \`persistent sync\` — refresh Obsidian context
+2. Read \`MEMORY/INDEX.md\` — check hot notes
+3. Read \`SPECS/SEED.md\` — respect patterns and constraints
+4. Use \`/opsx:new "feature"\` in your agent — create an OpenSpec change
+5. Use \`/opsx:ff\` — generate proposal + design + tasks
+6. Use \`/opsx:apply\` — implement
+7. Use \`/opsx:archive\` — archive when done
 
-## skills
-.skills/ — one markdown file per library, read as context
+## skills-sh
+.skills/ contains context from skills.sh registry.
+Add skills: \`persistent add-skill owner/repo/skill-name\`
+Search:     \`persistent skill --search <query>\`
 
 ## obsidian
 vault:${obsidian}
-sync: \`persistent sync\`
+refresh: \`persistent sync\`
+tag notes #spec → OpenSpec context
+tag notes #decision → SEED.md
+tag notes #pattern → skills creation
+tag notes #persistent → always in MEMORY/INDEX.md
 ${BLOCK_END}`;
 }
 
 /**
- * Write or patch an agent's integration file.
- * Idempotent — replaces only the persistent block, preserves everything else.
+ * Write or patch the agent's context file.
+ * Replaces ONLY the persistent block — preserves all existing content.
+ * Idempotent: safe to re-run any number of times.
  */
 export async function patchAgentFile(agentId, agentRoot, cfg) {
   const relPath  = AGENT_FILE_MAP[agentId] ?? AGENT_FILE_MAP.generic;
@@ -152,10 +153,12 @@ export async function patchAgentFile(agentId, agentRoot, cfg) {
 
   let updated;
   if (existing.includes(BLOCK_START)) {
+    // Replace existing block — leave everything outside it untouched
     const startIdx = existing.indexOf(BLOCK_START);
     const endIdx   = existing.indexOf(BLOCK_END) + BLOCK_END.length;
     updated = existing.slice(0, startIdx) + block + existing.slice(endIdx);
-  } else if (existing.length > 0) {
+  } else if (existing.trim().length > 0) {
+    // Prepend block — keep existing content below
     updated = block + "\n\n" + existing;
   } else {
     updated = block;
@@ -165,23 +168,14 @@ export async function patchAgentFile(agentId, agentRoot, cfg) {
   return { relPath, fullPath, block };
 }
 
-/**
- * Update all configured agents (multi-agent support).
- * Replaces old single updateAgent() call.
- */
 export async function updateAgent(cfg, forceAgent, opts = {}) {
   const cwd = process.cwd();
-
-  let targets; // [{ agentId, agentRoot }]
+  let targets;
 
   if (forceAgent) {
     targets = [{ agentId: forceAgent, agentRoot: opts.agentRoot ?? cwd }];
   } else if (cfg.agents?.length) {
-    // Multi-agent: patch each one
-    targets = cfg.agents.map((id) => ({
-      agentId:   id,
-      agentRoot: cfg.agentRoot ?? cwd,
-    }));
+    targets = cfg.agents.map((id) => ({ agentId: id, agentRoot: cfg.agentRoot ?? cwd }));
   } else if (cfg.agent) {
     targets = [{ agentId: cfg.agent, agentRoot: cfg.agentRoot ?? cwd }];
   } else {
@@ -190,16 +184,13 @@ export async function updateAgent(cfg, forceAgent, opts = {}) {
   }
 
   for (const { agentId, agentRoot } of targets) {
-    const relPath      = AGENT_FILE_MAP[agentId] ?? AGENT_FILE_MAP.generic;
-    const displayPath  = path.relative(cwd, path.join(agentRoot, relPath)) || relPath;
-    const { block }    = await patchAgentFile(agentId, agentRoot, cfg);
+    const relPath     = AGENT_FILE_MAP[agentId] ?? AGENT_FILE_MAP.generic;
+    const displayPath = path.relative(cwd, path.join(agentRoot, relPath)) || relPath;
+    await patchAgentFile(agentId, agentRoot, cfg);
     console.log(chalk.green("✓") + ` Patched ${chalk.bold(displayPath)} [${chalk.cyan(agentId)}]`);
   }
 }
 
-/**
- * Write AGENT_CONTEXT.md — universal source of truth in cwd.
- */
 export async function writeAgentContext(cfg, cwd) {
   const block    = buildBlock(cfg);
   const fullPath = path.join(cwd, "AGENT_CONTEXT.md");

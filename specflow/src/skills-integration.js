@@ -1,529 +1,383 @@
 /**
  * skills-integration.js
- * Deep integration with skills.sh — the dynamic skill development engine.
  *
- * skills.sh is not just an installer — it's the full lifecycle manager
- * for AI context skills: search, create, evolve, publish, version.
+ * Integration with skills.sh — the open agent skills registry.
  *
- * Flow:
- *   detect-stack → skills search (dynamic discovery)
- *   Obsidian patterns (#pattern, #skill) → skills create (from project knowledge)
- *   Project analysis → skills evolve (update skills as code changes)
- *   skills publish → community contribution
+ * skills.sh is the real engine. This module:
+ *   1. Runs `npx skills add <owner/repo/skill>` for each stack-mapped skill
+ *   2. Falls back to built-in markdown files if registry is unreachable
+ *   3. Provides search, create, evolve, list operations
  *
- * CLI dependency: `npx skills` (graceful fallback to local engine)
+ * Skill ID format (skills.sh canonical):  owner/repo/skill-name
+ * Examples:
+ *   vercel-labs/next-skills/next-best-practices
+ *   shadcn/ui/shadcn
+ *   anthropics/skills/frontend-design
+ *   antfu/skills/vitest
+ *
+ * CLI:  npx skills add <owner/repo/skill-name>
+ *       npx skills add <owner/repo>            (installs default skill)
+ *       npx skills search <query>
+ *       npx skills list
  */
 
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import ora from "ora";
-import { glob } from "glob";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SKILLS_MAP_PATH = path.join(__dirname, "../config/skills-map.json");
+const __dirname  = path.dirname(fileURLToPath(import.meta.url));
+const MAP_PATH   = path.join(__dirname, "../config/skills-map.json");
 const BUILTIN_DIR = path.join(__dirname, "../config/builtin-skills");
 const SKILLS_DIR = ".skills";
 
-// ─── skills.sh CLI Detection ────────────────────────────────────────────────
+// ─── skills.sh CLI ──────────────────────────────────────────────────────────
 
-let _skillsAvailable = null;
+let _cliAvailable = null;
 
 /**
- * Check if the skills.sh CLI is available.
+ * Check if the skills.sh CLI is available via npx.
  * @returns {Promise<boolean>}
  */
 export async function isSkillsCliAvailable() {
-  if (_skillsAvailable !== null) return _skillsAvailable;
+  if (_cliAvailable !== null) return _cliAvailable;
   try {
     execSync("npx --yes skills --version", { stdio: "pipe", timeout: 15_000 });
-    _skillsAvailable = true;
+    _cliAvailable = true;
   } catch {
-    _skillsAvailable = false;
+    _cliAvailable = false;
   }
-  return _skillsAvailable;
+  return _cliAvailable;
 }
 
 /**
- * Run a skills.sh CLI command.
- * @param {string} args - CLI arguments
- * @param {string} cwd - Working directory
- * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>}
+ * Run `npx skills <args>` in the project directory.
+ * Streams output live to user.
+ *
+ * @param {string[]} args
+ * @param {string}   cwd
  */
-async function runSkillsCli(args, cwd) {
+function runSkills(args, cwd) {
+  const result = spawnSync("npx", ["--yes", "skills", ...args], {
+    cwd,
+    stdio: "inherit",
+    timeout: 60_000,
+    shell: process.platform === "win32",
+  });
+  return { ok: result.status === 0 };
+}
+
+/**
+ * Run `npx skills <args>` and capture stdout (for search/list parsing).
+ * @param {string[]} args
+ * @param {string}   cwd
+ */
+function captureSkills(args, cwd) {
   try {
-    const stdout = execSync(`npx --yes skills ${args}`, {
+    const out = execSync(["npx", "--yes", "skills", ...args].join(" "), {
       cwd,
       stdio: "pipe",
       timeout: 30_000,
       encoding: "utf8",
     });
-    return { ok: true, stdout: stdout.trim(), stderr: "" };
+    return { ok: true, stdout: out };
   } catch (err) {
-    return {
-      ok: false,
-      stdout: err.stdout?.toString() ?? "",
-      stderr: err.stderr?.toString() ?? err.message,
-    };
+    return { ok: false, stdout: err.stdout?.toString() ?? "", stderr: err.stderr?.toString() ?? "" };
   }
 }
 
-// ─── Dynamic Skill Discovery ────────────────────────────────────────────────
+// ─── Stack → Skills Resolution ───────────────────────────────────────────────
 
 /**
- * Search skills.sh registry for skills matching stack/query.
- * Goes beyond the static skills-map.json — discovers community skills.
- *
- * @param {string} query - Search term (e.g., "nextjs auth", "prisma orm")
- * @param {Object} opts
- * @param {string[]} opts.stack - Detected stack keys for context
- * @returns {Promise<Object[]>} Array of { id, name, description, owner, version }
+ * Resolve skill IDs for detected stack keys using skills-map.json.
+ * @param {string[]} stackKeys
+ * @returns {Promise<string[]>}
  */
-export async function searchSkills(query, opts = {}) {
-  const hasCli = await isSkillsCliAvailable();
-
-  if (hasCli) {
-    const result = await runSkillsCli(`search "${query}"`, process.cwd());
-    if (result.ok) {
-      return parseSkillsSearchOutput(result.stdout);
-    }
-  }
-
-  // Fallback: search local skills-map for partial matches
-  const map = await loadSkillsMap();
-  const results = [];
-  const queryLower = query.toLowerCase();
-
-  for (const [stackKey, skillIds] of Object.entries(map)) {
-    if (stackKey.includes(queryLower) || queryLower.includes(stackKey)) {
-      for (const id of skillIds) {
-        results.push({
-          id,
-          name: id.split("/")[1],
-          owner: id.split("/")[0],
-          source: "skills-map",
-        });
-      }
-    }
-  }
-
-  return results;
-}
-
-/**
- * Discover all relevant skills for a detected stack.
- * Uses skills.sh search for each stack key to find community skills
- * beyond what's in skills-map.json.
- *
- * @param {string[]} stackKeys - Detected stack keys
- * @param {string} cwd - Project root
- * @returns {Promise<{ mapped: string[], discovered: string[] }>}
- */
-export async function discoverSkills(stackKeys, cwd) {
-  const map = await loadSkillsMap();
-  const mapped = new Set();
-  const discovered = new Set();
-
-  // 1. Static mapping
+export async function resolveSkills(stackKeys) {
+  const raw = await fs.readFile(MAP_PATH, "utf8");
+  const map = JSON.parse(raw);
+  const ids = new Set();
   for (const key of stackKeys) {
-    for (const id of map[key] ?? []) {
-      mapped.add(id);
-    }
+    for (const id of (map[key] ?? [])) ids.add(id);
   }
-
-  // 2. Dynamic discovery via skills.sh
-  const hasCli = await isSkillsCliAvailable();
-  if (hasCli) {
-    for (const key of stackKeys) {
-      const result = await runSkillsCli(`search "${key}" --limit 3`, cwd);
-      if (result.ok) {
-        const found = parseSkillsSearchOutput(result.stdout);
-        for (const skill of found) {
-          if (!mapped.has(skill.id)) {
-            discovered.add(skill.id);
-          }
-        }
-      }
-    }
-  }
-
-  return {
-    mapped: [...mapped],
-    discovered: [...discovered],
-  };
+  return [...ids];
 }
 
-// ─── Skill Installation (Enhanced) ─────────────────────────────────────────
+// ─── Skill Installation ──────────────────────────────────────────────────────
 
 /**
- * Install skills with full skills.sh lifecycle support.
- * Tries: registry → builtin → placeholder.
- * Tracks versions and sources for future updates.
+ * Install a list of skills.
+ * For each skill:
+ *   1. Try `npx skills add <id>` — installs from skills.sh registry
+ *   2. Fall back to bundled builtin markdown file
+ *   3. Write a placeholder if neither is available
  *
- * @param {string[]} skillIds
- * @param {string} cwd
- * @returns {Promise<Object>}
+ * @param {string[]} skillIds  - e.g. ["vercel-labs/next-skills/next-best-practices"]
+ * @param {string}   cwd       - project root
  */
 export async function installSkills(skillIds, cwd) {
-  if (skillIds.length === 0) return { installed: [], builtin: [], placeholder: [] };
+  if (!skillIds.length) return { installed: [], builtin: [], placeholder: [] };
 
-  const result = { installed: [], builtin: [], placeholder: [], manifest: [] };
-  const spinner = ora(`Installing ${skillIds.length} skills...`).start();
+  const result = { installed: [], builtin: [], placeholder: [] };
   const hasCli = await isSkillsCliAvailable();
+  const spinner = ora(`Installing ${skillIds.length} skills...`).start();
 
-  for (const skill of skillIds) {
-    // 1. Try skills.sh CLI
+  for (const id of skillIds) {
+    spinner.text = `Installing ${chalk.cyan(id)}...`;
+
     if (hasCli) {
-      const cliResult = await runSkillsCli(`add ${skill}`, cwd);
-      if (cliResult.ok) {
-        result.installed.push(skill);
-
-        // Track version info
-        const versionResult = await runSkillsCli(`info ${skill} --json`, cwd);
-        if (versionResult.ok) {
-          try {
-            const info = JSON.parse(versionResult.stdout);
-            result.manifest.push({
-              id: skill,
-              version: info.version,
-              source: "skills.sh",
-              installedAt: new Date().toISOString(),
-            });
-          } catch {
-            result.manifest.push({ id: skill, source: "skills.sh" });
-          }
-        }
-
-        spinner.text = `Installed ${chalk.cyan(skill)} (skills.sh)`;
+      // skills.sh CLI: `npx skills add owner/repo/skill-name`
+      const r = runSkills(["add", id], cwd);
+      if (r.ok) {
+        result.installed.push(id);
         continue;
       }
+      // CLI failed (likely network issue or skill moved) — try builtin
     }
 
-    // 2. Try builtin
-    const builtinContent = await loadBuiltin(skill);
+    // Builtin fallback
+    const builtinContent = await loadBuiltin(id);
     if (builtinContent) {
-      await writeSkillFile(skill, builtinContent, cwd);
-      result.builtin.push(skill);
-      result.manifest.push({ id: skill, source: "builtin" });
-      spinner.text = `Installed ${chalk.cyan(skill)} (builtin)`;
+      await writeLocalSkill(id, builtinContent, cwd);
+      result.builtin.push(id);
       continue;
     }
 
-    // 3. Placeholder
-    const [owner, name] = skill.split("/");
-    const placeholder = `# ${skill}\n\n> Skill not available in registry or builtins.\n> Install manually: \`npx skills add ${skill}\`\n>\n> Or fill in your own best practices for ${name} (${owner}) here.\n> This file is read by your AI agent as context.\n`;
-    await writeSkillFile(skill, placeholder, cwd);
-    result.placeholder.push(skill);
-    result.manifest.push({ id: skill, source: "placeholder" });
+    // Placeholder
+    await writeLocalSkill(id, buildPlaceholder(id), cwd);
+    result.placeholder.push(id);
   }
 
-  // Write skill manifest for tracking
-  await writeSkillManifest(cwd, result.manifest);
-
-  // Summary
   const parts = [];
-  if (result.installed.length) parts.push(`${result.installed.length} from skills.sh`);
-  if (result.builtin.length) parts.push(`${result.builtin.length} builtin`);
+  if (result.installed.length)   parts.push(`${result.installed.length} from skills.sh`);
+  if (result.builtin.length)     parts.push(`${result.builtin.length} builtin`);
   if (result.placeholder.length) parts.push(`${result.placeholder.length} placeholder`);
-  spinner.succeed(`Skills ready: ${parts.join(" · ")} → .skills/`);
+
+  spinner.succeed(`Skills ready: ${parts.join(" · ")}`);
+
+  if (!hasCli && skillIds.length > 0) {
+    console.log(chalk.dim("  Note: skills.sh CLI not available — builtins/placeholders used."));
+    console.log(chalk.dim("  Install: npm install -g skills  (or npx skills will auto-install)"));
+  }
 
   return result;
 }
 
 /**
- * Update installed skills to latest versions.
- * Uses skills.sh CLI for version management.
- *
+ * Install a single skill manually.
+ * @param {string} skillId
  * @param {string} cwd
- * @param {Object} opts
- * @param {string[]} opts.only - Only update specific skills
- * @returns {Promise<Object>}
+ * @param {Object} cfg - .persistent.json config (for updating agent context)
  */
-export async function updateSkills(cwd, opts = {}) {
+export async function addSkill(skillId, cwd, cfg) {
   const hasCli = await isSkillsCliAvailable();
-  const manifest = await loadSkillManifest(cwd);
-  const spinner = ora("Checking for skill updates...").start();
-  const results = { updated: [], skipped: [], failed: [] };
 
-  const targets = opts.only
-    ? manifest.filter((m) => opts.only.includes(m.id))
-    : manifest;
-
-  for (const entry of targets) {
-    if (entry.source !== "skills.sh" && !hasCli) {
-      results.skipped.push(entry.id);
-      continue;
-    }
-
-    if (hasCli) {
-      const result = await runSkillsCli(`update ${entry.id}`, cwd);
-      if (result.ok) {
-        results.updated.push(entry.id);
-        spinner.text = `Updated ${chalk.cyan(entry.id)}`;
-      } else {
-        results.failed.push(entry.id);
-      }
-    } else {
-      results.skipped.push(entry.id);
+  if (hasCli) {
+    console.log(chalk.dim(`  npx skills add ${skillId}`));
+    const r = runSkills(["add", skillId], cwd);
+    if (r.ok) {
+      console.log(chalk.green("✓") + ` Installed ${chalk.cyan(skillId)} (skills.sh)`);
+      return;
     }
   }
 
-  spinner.succeed(
-    `Skills update: ${results.updated.length} updated, ${results.skipped.length} skipped`
-  );
+  // Fallback
+  const builtin = await loadBuiltin(skillId);
+  if (builtin) {
+    await writeLocalSkill(skillId, builtin, cwd);
+    console.log(chalk.green("✓") + ` Installed ${chalk.cyan(skillId)} (builtin)`);
+    return;
+  }
+
+  await writeLocalSkill(skillId, buildPlaceholder(skillId), cwd);
+  console.log(chalk.yellow("⚠") + ` ${chalk.cyan(skillId)} — placeholder written (.skills/)`);
+  console.log(chalk.dim("  Fill it in or install via: npx skills add " + skillId));
+}
+
+/**
+ * Search skills.sh registry.
+ * @param {string} query
+ * @returns {Promise<Object[]>}
+ */
+export async function searchSkills(query) {
+  const hasCli = await isSkillsCliAvailable();
+
+  if (hasCli) {
+    const r = captureSkills(["search", query], process.cwd());
+    if (r.ok) return parseSearchOutput(r.stdout);
+  }
+
+  // Offline fallback — search skills-map keys
+  const raw = await fs.readFile(MAP_PATH, "utf8").catch(() => "{}");
+  const map = JSON.parse(raw);
+  const q = query.toLowerCase();
+  const results = [];
+
+  for (const [stack, ids] of Object.entries(map)) {
+    if (stack.includes(q)) {
+      for (const id of ids) {
+        const [owner, repo, skill] = id.split("/");
+        results.push({ id, owner, repo, name: skill || repo, source: "skills-map" });
+      }
+    }
+  }
+
   return results;
 }
 
-// ─── Dynamic Skill Creation (from Obsidian + Project) ───────────────────────
+/**
+ * Update all installed skills.
+ * @param {string} cwd
+ */
+export async function updateSkills(cwd) {
+  const hasCli = await isSkillsCliAvailable();
+
+  if (hasCli) {
+    console.log(chalk.dim("  Updating installed skills via skills.sh..."));
+    runSkills(["update"], cwd);
+    return;
+  }
+
+  console.log(chalk.yellow("⚠  skills.sh CLI not available — cannot update automatically."));
+  console.log(chalk.dim("  Run: npx skills update"));
+}
 
 /**
- * Create a new skill from Obsidian patterns and project analysis.
- * This is the "dynamic skill dev" the user wants — skills evolve
- * from the project's own patterns, not just from a registry.
+ * Create a skill from Obsidian patterns and project code.
+ * Writes a local skill file, optionally published to skills.sh.
  *
- * @param {string} skillId - e.g., "myteam/auth-patterns"
- * @param {string} cwd
- * @param {Object} opts
+ * @param {string}   skillId       - e.g. "myteam/my-skills/auth-patterns"
+ * @param {string}   cwd
+ * @param {Object}   opts
  * @param {Object[]} opts.obsidianNotes - Notes tagged #pattern or #skill
- * @param {Object} opts.cliAI - CLI's native AI for generation
- * @param {string[]} opts.stack - Detected stack
- * @param {Object} opts.codePatterns - Extracted code patterns
+ * @param {string[]} opts.stack
+ * @param {Object}   opts.cliAI   - CLI's native AI for generation
  */
 export async function createSkillFromProject(skillId, cwd, opts = {}) {
-  const spinner = ora(`Creating skill: ${chalk.cyan(skillId)}`).start();
-  const hasCli = await isSkillsCliAvailable();
-  const [owner, name] = skillId.split("/");
-
-  // 1. Gather context from Obsidian notes
-  const obsidianContent = formatObsidianPatternsForSkill(
-    opts.obsidianNotes || [],
-    name
-  );
-
-  // 2. Gather context from project code analysis
-  const codeContent = await analyzeProjectForSkill(cwd, name, opts.stack || []);
-
-  // 3. Generate skill content
+  const obsidianContent = formatObsidianPatterns(opts.obsidianNotes || [], skillId);
   let skillContent;
 
   if (opts.cliAI) {
-    spinner.text = "Using AI to synthesize skill from patterns...";
-    const prompt = `
-Generate a skills.sh compatible skill file for: ${skillId}
-
-DETECTED STACK: ${(opts.stack || []).join(", ")}
-
-OBSIDIAN PATTERNS (from user's knowledge vault):
-${obsidianContent || "No relevant Obsidian notes."}
-
-CODE PATTERNS (extracted from project):
-${codeContent || "No patterns extracted."}
-
-FORMAT: Create a markdown skill file with these sections:
-1. Header with skill name and description
-2. ## Patterns — Best practices to follow
-3. ## Examples — Code snippets showing correct usage
-4. ## Anti-Patterns — What to avoid
-5. ## References — Links and resources
-
-Make patterns specific and actionable. Use code blocks for examples.
-The skill file should be directly useful to an AI coding agent.
-`;
-
+    const prompt = buildSkillGenPrompt(skillId, obsidianContent, opts.stack || []);
     try {
-      const response = await opts.cliAI.generate({
-        prompt,
-        maxTokens: 1500,
-        temperature: 0,
-      });
-      skillContent = response.text;
+      const r = await opts.cliAI.generate({ prompt, maxTokens: 1500, temperature: 0 });
+      skillContent = r.text;
     } catch {
-      // Fallback to template
-      skillContent = buildSkillTemplate(skillId, obsidianContent, codeContent);
+      skillContent = buildSkillTemplate(skillId, obsidianContent);
     }
   } else {
-    skillContent = buildSkillTemplate(skillId, obsidianContent, codeContent);
+    skillContent = buildSkillTemplate(skillId, obsidianContent);
   }
 
-  // 4. Write skill file
-  await writeSkillFile(skillId, skillContent, cwd);
+  await writeLocalSkill(skillId, skillContent, cwd);
 
-  // 5. If skills.sh CLI is available, register it
+  const hasCli = await isSkillsCliAvailable();
   if (hasCli) {
-    const result = await runSkillsCli(
-      `create ${skillId} --from "${path.join(cwd, SKILLS_DIR, owner, name + ".md")}"`,
-      cwd
-    );
-    if (result.ok) {
-      spinner.succeed(`Skill created + registered: ${chalk.cyan(skillId)}`);
-      return { method: "skills.sh", success: true };
-    }
+    console.log(chalk.dim("  To publish to skills.sh: npx skills publish " + skillId));
   }
 
-  spinner.succeed(`Skill created locally: ${chalk.cyan(skillId)}`);
-  return { method: "local", success: true };
+  console.log(chalk.green("✓") + ` Skill created: ${chalk.cyan(skillId)} → .skills/`);
+  return { success: true };
 }
 
 /**
- * Evolve an existing skill with new patterns from project changes.
- * This keeps skills up-to-date as the codebase evolves.
- *
- * @param {string} skillId
- * @param {string} cwd
- * @param {Object} opts
- * @param {Object} opts.cliAI - CLI's native AI
- * @param {Object[]} opts.newPatterns - New patterns from Obsidian/code
+ * Evolve an existing skill with new patterns.
+ * @param {string}   skillId
+ * @param {string}   cwd
+ * @param {Object}   opts
+ * @param {Object[]} opts.newPatterns - new patterns to add
+ * @param {Object}   opts.cliAI
  */
 export async function evolveSkill(skillId, cwd, opts = {}) {
-  const spinner = ora(`Evolving skill: ${chalk.cyan(skillId)}`).start();
   const skillPath = path.join(cwd, skillIdToPath(skillId));
-
-  // Read current skill
-  let currentContent;
-  try {
-    currentContent = await fs.readFile(skillPath, "utf8");
-  } catch {
-    spinner.fail(`Skill not found: ${skillId}`);
-    return { success: false, error: "not-found" };
+  let current;
+  try { current = await fs.readFile(skillPath, "utf8"); }
+  catch {
+    console.log(chalk.red(`✗ Skill not found: ${skillId}`));
+    console.log(chalk.dim("  Run: persistent skill --create " + skillId));
+    return { success: false };
   }
 
-  const newPatterns = opts.newPatterns || [];
-  if (newPatterns.length === 0) {
-    spinner.info("No new patterns to merge");
+  const patterns = opts.newPatterns || [];
+  if (!patterns.length) {
+    console.log(chalk.dim("  No new patterns to add."));
     return { success: true, changed: false };
   }
 
-  if (opts.cliAI) {
-    const prompt = `
-Update this skill file with new patterns:
-
-CURRENT SKILL (${skillId}):
-${currentContent}
-
-NEW PATTERNS TO MERGE:
-${newPatterns.map((p) => `- ${p.title || p}: ${p.content || ""}`).join("\n")}
-
-RULES:
-1. Don't duplicate existing patterns
-2. Keep the same format and sections
-3. Add new patterns under appropriate sections
-4. If a pattern conflicts with existing ones, prefer the newer one
-5. Keep the file concise
-
-Output the complete updated skill file.
-`;
-
-    try {
-      const response = await opts.cliAI.generate({
-        prompt,
-        maxTokens: 1500,
-        temperature: 0,
-      });
-      await fs.writeFile(skillPath, response.text, "utf8");
-      spinner.succeed(`Skill evolved: ${chalk.cyan(skillId)} (+${newPatterns.length} patterns)`);
-      return { success: true, changed: true, method: "ai" };
-    } catch {
-      // Fallback to static append
-    }
-  }
-
-  // Static merge: append new patterns
-  const addSection = `\n\n## New Patterns (${new Date().toISOString().slice(0, 10)})\n${newPatterns
-    .map((p) => `- ${typeof p === "string" ? p : p.title || p.content}`)
-    .join("\n")}\n`;
-
-  await fs.writeFile(skillPath, currentContent + addSection, "utf8");
-  spinner.succeed(`Skill evolved: ${chalk.cyan(skillId)} (+${newPatterns.length} patterns)`);
-  return { success: true, changed: true, method: "append" };
+  const addition = `\n\n## Updated Patterns (${new Date().toISOString().slice(0, 10)})\n${patterns.map((p) => `- ${typeof p === "string" ? p : p.title || p.content || p}`).join("\n")}\n`;
+  await fs.writeFile(skillPath, current + addition, "utf8");
+  console.log(chalk.green("✓") + ` Skill evolved: ${chalk.cyan(skillId)} (+${patterns.length} patterns)`);
+  return { success: true, changed: true };
 }
 
 /**
- * List installed skills with status info.
+ * List installed skills.
  * @param {string} cwd
- * @returns {Promise<Object[]>}
  */
 export async function listInstalledSkills(cwd) {
-  const skills = [];
-  const skillsDir = path.join(cwd, SKILLS_DIR);
+  const hasCli = await isSkillsCliAvailable();
 
+  // Try skills.sh CLI first
+  if (hasCli) {
+    const r = captureSkills(["list"], cwd);
+    if (r.ok) {
+      const results = parseSearchOutput(r.stdout);
+      if (results.length) return results;
+    }
+  }
+
+  // Fallback: scan .skills/ directory
+  const skillsDir = path.join(cwd, SKILLS_DIR);
+  const skills = [];
   try {
     const owners = await fs.readdir(skillsDir, { withFileTypes: true });
-    for (const ownerEntry of owners) {
-      if (!ownerEntry.isDirectory()) continue;
-      const ownerDir = path.join(skillsDir, ownerEntry.name);
-      const files = await fs.readdir(ownerDir);
-
+    for (const owner of owners) {
+      if (!owner.isDirectory()) continue;
+      const ownerDir = path.join(skillsDir, owner.name);
+      const files = await fs.readdir(ownerDir).catch(() => []);
       for (const file of files) {
         if (!file.endsWith(".md")) continue;
-        const name = file.replace(".md", "");
-        const id = `${ownerEntry.name}/${name}`;
-        const stat = await fs.stat(path.join(ownerDir, file));
-
+        const stat = await fs.stat(path.join(ownerDir, file)).catch(() => null);
         skills.push({
-          id,
-          owner: ownerEntry.name,
-          name,
-          modified: stat.mtime,
-          size: stat.size,
+          id:       `${owner.name}/${file.replace(".md", "")}`,
+          owner:    owner.name,
+          name:     file.replace(".md", ""),
+          source:   "local",
+          version:  stat ? stat.mtime.toISOString().slice(0, 10) : "?",
         });
       }
     }
-  } catch {
-    // No .skills directory yet
-  }
-
-  // Merge with manifest for source info
-  const manifest = await loadSkillManifest(cwd);
-  for (const skill of skills) {
-    const entry = manifest.find((m) => m.id === skill.id);
-    if (entry) {
-      skill.source = entry.source;
-      skill.version = entry.version;
-    }
-  }
+  } catch { /* .skills not created yet */ }
 
   return skills;
 }
 
-// ─── Obsidian → Skills Bridge ───────────────────────────────────────────────
-
 /**
  * Extract skill-worthy patterns from Obsidian notes.
- * Notes tagged #pattern, #skill, #best-practice become skill candidates.
- *
- * @param {Object[]} notes - Obsidian notes
- * @returns {Object[]} Candidate patterns for skill creation/evolution
+ * Notes tagged #pattern, #skill, #best-practice, #convention.
+ * @param {Object[]} notes
+ * @returns {Object[]}
  */
 export function extractSkillCandidates(notes) {
   if (!notes?.length) return [];
 
   const candidates = [];
+  const skillTags = new Set(["pattern", "skill", "best-practice", "convention"]);
 
   for (const note of notes) {
-    const content = (note.content || "").toLowerCase();
-    const isSkillRelevant =
-      content.includes("#pattern") ||
-      content.includes("#skill") ||
-      content.includes("#best-practice") ||
-      content.includes("#convention");
+    const tags = (note.tags || []).map((t) => t.replace("#", "").toLowerCase());
+    if (!tags.some((t) => skillTags.has(t))) continue;
 
-    if (!isSkillRelevant) continue;
-
-    // Extract individual patterns from the note
     const lines = (note.content || "").split("\n");
     for (const line of lines) {
-      if (line.startsWith("- ") || line.startsWith("* ")) {
-        const item = line.slice(2).trim();
-        if (item.length > 10 && !item.startsWith("#")) {
-          candidates.push({
-            title: item.slice(0, 80),
-            content: item,
-            source: note.rel || "obsidian",
-            type: "pattern",
-          });
-        }
+      if ((line.startsWith("- ") || line.startsWith("* ")) && line.length > 12) {
+        candidates.push({
+          title:   line.slice(2, 82).trim(),
+          content: line.slice(2).trim(),
+          source:  note.rel || "obsidian",
+        });
       }
     }
   }
@@ -531,171 +385,140 @@ export function extractSkillCandidates(notes) {
   return candidates;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function skillIdToFilename(id) {
-  return id.replace("/", "__") + ".md";
-}
+// ─── Filesystem helpers ──────────────────────────────────────────────────────
 
 function skillIdToPath(id) {
-  const [owner, name] = id.split("/");
-  return path.join(SKILLS_DIR, owner, name + ".md");
-}
-
-async function loadSkillsMap() {
-  const raw = await fs.readFile(SKILLS_MAP_PATH, "utf8");
-  return JSON.parse(raw);
-}
-
-async function loadBuiltin(skillId) {
-  const filename = skillIdToFilename(skillId);
-  try {
-    return await fs.readFile(path.join(BUILTIN_DIR, filename), "utf8");
-  } catch {
-    return null;
+  // owner/repo/skill-name → .skills/owner/repo--skill-name.md
+  // owner/repo → .skills/owner/repo.md
+  const parts = id.split("/");
+  if (parts.length === 3) {
+    const [owner, repo, skill] = parts;
+    return path.join(SKILLS_DIR, owner, `${repo}--${skill}.md`);
   }
+  if (parts.length === 2) {
+    const [owner, name] = parts;
+    return path.join(SKILLS_DIR, owner, `${name}.md`);
+  }
+  return path.join(SKILLS_DIR, `${id}.md`);
 }
 
-async function writeSkillFile(skillId, content, cwd) {
-  const fullPath = path.join(cwd, skillIdToPath(skillId));
+async function writeLocalSkill(id, content, cwd) {
+  const fullPath = path.join(cwd, skillIdToPath(id));
   await fs.mkdir(path.dirname(fullPath), { recursive: true });
   await fs.writeFile(fullPath, content, "utf8");
 }
 
-async function writeSkillManifest(cwd, entries) {
-  const manifestPath = path.join(cwd, SKILLS_DIR, ".manifest.json");
-  const existing = await loadSkillManifest(cwd);
-
-  // Merge: update existing entries, add new ones
-  const merged = [...existing];
-  for (const entry of entries) {
-    const idx = merged.findIndex((m) => m.id === entry.id);
-    if (idx >= 0) {
-      merged[idx] = { ...merged[idx], ...entry };
-    } else {
-      merged.push(entry);
-    }
-  }
-
-  await fs.mkdir(path.dirname(manifestPath), { recursive: true });
-  await fs.writeFile(manifestPath, JSON.stringify(merged, null, 2), "utf8");
-}
-
-async function loadSkillManifest(cwd) {
-  const manifestPath = path.join(cwd, SKILLS_DIR, ".manifest.json");
-  try {
-    const raw = await fs.readFile(manifestPath, "utf8");
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function formatObsidianPatternsForSkill(notes, skillName) {
-  if (!notes?.length) return "";
-
-  const relevant = notes.filter((note) => {
-    const content = (note.content || "").toLowerCase();
-    return (
-      content.includes(skillName.toLowerCase()) ||
-      content.includes("#pattern") ||
-      content.includes("#skill")
-    );
-  });
-
-  if (relevant.length === 0) return "";
-
-  return relevant
-    .slice(0, 5)
-    .map((n) => {
-      const preview = (n.content || "").split("\n").slice(0, 10).join("\n");
-      return `### ${n.rel || "note"}\n${preview}`;
-    })
-    .join("\n\n");
-}
-
-async function analyzeProjectForSkill(cwd, skillName, stack) {
-  // Look for patterns in project code that relate to this skill
-  const patterns = [];
-
-  const filePatterns = [
-    `**/*${skillName}*`,
-    `**/lib/**/*.ts`,
-    `**/src/**/*.ts`,
-    `**/app/**/*.ts`,
+async function loadBuiltin(id) {
+  // Try exact match first: owner__repo--skill.md
+  const candidates = [
+    path.join(BUILTIN_DIR, id.replace(/\//g, "__") + ".md"),
+    path.join(BUILTIN_DIR, id.split("/").pop() + ".md"),
   ];
-
-  for (const pattern of filePatterns) {
-    try {
-      const files = await glob(pattern, {
-        cwd,
-        ignore: ["**/node_modules/**", "**/.next/**", "**/dist/**"],
-        maxDepth: 4,
-      });
-
-      for (const file of files.slice(0, 3)) {
-        try {
-          const content = await fs.readFile(path.join(cwd, file), "utf8");
-          patterns.push(`File: ${file}\n${content.slice(0, 500)}`);
-        } catch {
-          // Skip unreadable files
-        }
-      }
-    } catch {
-      // Pattern didn't match
-    }
+  for (const p of candidates) {
+    try { return await fs.readFile(p, "utf8"); } catch {}
   }
-
-  return patterns.join("\n---\n");
+  return null;
 }
 
-function buildSkillTemplate(skillId, obsidianContent, codeContent) {
-  const [owner, name] = skillId.split("/");
+function buildPlaceholder(id) {
+  const name = id.split("/").pop();
+  return `# ${id}
 
-  return `# ${name} (${owner})
-
-> Generated by persistent from project patterns + Obsidian notes.
-> Evolves with \`persistent skill evolve ${skillId}\`
+> Skill from skills.sh registry.
+> Install: \`npx skills add ${id}\`
 
 ## Patterns
-${obsidianContent ? "### From Obsidian Vault\n" + obsidianContent : "<!-- Add patterns from your workflow -->"}
-
-${codeContent ? "### From Project Code\n" + codeContent.slice(0, 500) : "<!-- Patterns extracted from your codebase -->"}
-
-## Examples
-<!-- Add code examples showing correct usage -->
+<!-- Add best practices for ${name} here -->
+<!-- This file is read by your AI agent as context -->
 
 ## Anti-Patterns
 <!-- What NOT to do -->
 
 ## References
-<!-- Links to docs, ADRs, related skills -->
+- https://skills.sh/${id.split("/").slice(0, 2).join("/")}
 `;
 }
 
-function parseSkillsSearchOutput(stdout) {
-  const results = [];
-  const lines = stdout.split("\n").filter((l) => l.trim());
+function buildSkillTemplate(id, obsidianContent) {
+  const name = id.split("/").pop();
+  return `# ${id}
 
-  for (const line of lines) {
-    // Try to parse "owner/name - description" format
-    const match = line.match(/^(\S+\/\S+)\s*[-—:]\s*(.*)$/);
+> Generated by persistent from project patterns + Obsidian notes.
+> Evolve: \`persistent skill --evolve ${id}\`
+
+## Patterns
+${obsidianContent || `<!-- Add patterns for ${name} here -->`}
+
+## Anti-Patterns
+<!-- What NOT to do -->
+
+## Examples
+<!-- Code examples showing correct usage -->
+
+## References
+- https://skills.sh/${id.split("/").slice(0, 2).join("/")}
+`;
+}
+
+function buildSkillGenPrompt(id, obsidianContent, stack) {
+  return `Generate a skills.sh skill file for: ${id}
+
+STACK: ${stack.join(", ")}
+
+OBSIDIAN PATTERNS (from user's knowledge vault):
+${obsidianContent || "No relevant notes."}
+
+Create a skill markdown file with:
+1. Header with skill name and brief description
+2. ## Patterns — best practices (specific, actionable)
+3. ## Anti-Patterns — what to avoid
+4. ## Examples — short code snippets
+5. ## References — links
+
+Be specific to the stack. Use code blocks for examples.`;
+}
+
+function formatObsidianPatterns(notes, skillId) {
+  const name = skillId.split("/").pop();
+  const relevant = notes.filter((n) => {
+    const c = (n.content || "").toLowerCase();
+    return c.includes(name.toLowerCase()) || c.includes("#pattern") || c.includes("#skill");
+  });
+
+  return relevant
+    .slice(0, 5)
+    .map((n) => {
+      const preview = (n.content || "").split("\n").slice(0, 8).join("\n");
+      return `### ${n.rel || "note"}\n${preview}`;
+    })
+    .join("\n\n");
+}
+
+function parseSearchOutput(stdout) {
+  const results = [];
+  for (const line of stdout.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    // Format varies: "owner/repo/skill  —  description" or just "owner/repo/skill"
+    const match = trimmed.match(/^([\w-]+\/[\w-]+(?:\/[\w-]+)?)\s*(?:[-—]\s*(.*))?$/);
     if (match) {
       const [, id, description] = match;
-      const [owner, name] = id.split("/");
-      results.push({ id, name, owner, description: description.trim() });
+      const parts = id.split("/");
+      results.push({
+        id,
+        owner:       parts[0],
+        repo:        parts[1],
+        name:        parts[2] || parts[1],
+        description: (description || "").trim(),
+      });
     }
   }
-
   return results;
 }
 
-// Re-export resolveSkills from original for backward compatibility
-export async function resolveSkills(stackKeys) {
-  const map = await loadSkillsMap();
-  const skills = new Set();
-  for (const key of stackKeys) {
-    for (const s of map[key] ?? []) skills.add(s);
-  }
-  return [...skills];
+// Re-export for backward compat
+export { searchSkills, updateSkills, createSkillFromProject, evolveSkill, listInstalledSkills, extractSkillCandidates };
+export async function discoverSkills(stackKeys, cwd) {
+  const mapped = await resolveSkills(stackKeys);
+  return { mapped, discovered: [] };
 }

@@ -1,6 +1,6 @@
 {
   "name": "@kousthubha/persistent",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Universal AI workflow bootstrap — one command, any stack, any agent.",
   "type": "module",
   "bin": {

@@ -82,7 +82,7 @@ class PersistentPlugin {
   }
 
   /**
-   * Full detection + setup (analagous to `persistent init`)
+   * Full detection + setup (analogous to `persistent init`)
    * CLI tools call this to bootstrap persistent in a project
    * 
    * New: If cliAI is registered, uses spec-driven context generation
@@ -259,6 +259,8 @@ class PersistentPlugin {
       name: "persistent",
       version: require("./package.json").version,
       description: "Universal AI workflow bootstrap",
+    };
+  }
 
   /**
    * Propose a new spec for a feature
