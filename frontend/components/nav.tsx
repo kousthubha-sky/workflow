@@ -25,15 +25,13 @@ export default function Nav() {
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
-        {/* Breadcrumb logo — skills.sh style */}
         <a href="#" className="flex items-center gap-2 group">
-          <span className="text-green text-sm font-mono font-bold">&gt;_</span>
-          <span className="text-text font-mono font-semibold text-sm tracking-wide group-hover:text-green transition-colors">
+          <span className="text-accent text-sm font-mono font-bold">&gt;_</span>
+          <span className="text-text font-mono font-semibold text-sm tracking-wide group-hover:text-accent transition-colors">
             specflow
           </span>
         </a>
 
-        {/* Desktop links */}
         <div className="hidden md:flex items-center gap-8">
           {links.map((l) => (
             <a
@@ -54,11 +52,7 @@ export default function Nav() {
           </a>
         </div>
 
-        {/* Mobile menu btn */}
-        <button
-          className="md:hidden text-muted-2 hover:text-text"
-          onClick={() => setOpen(!open)}
-        >
+        <button className="md:hidden text-muted-2 hover:text-text" onClick={() => setOpen(!open)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             {open ? (
               <path d="M18 6L6 18M6 6l12 12" />
@@ -73,16 +67,10 @@ export default function Nav() {
         </button>
       </div>
 
-      {/* Mobile menu */}
       {open && (
         <div className="md:hidden border-t border-border bg-bg px-6 py-4 flex flex-col gap-4">
           {links.map((l) => (
-            <a
-              key={l.label}
-              href={l.href}
-              onClick={() => setOpen(false)}
-              className="text-muted-2 hover:text-text text-xs font-mono uppercase tracking-widest transition-colors"
-            >
+            <a key={l.label} href={l.href} onClick={() => setOpen(false)} className="text-muted-2 hover:text-text text-xs font-mono uppercase tracking-widest transition-colors">
               {l.label}
             </a>
           ))}

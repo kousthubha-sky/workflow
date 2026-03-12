@@ -15,50 +15,37 @@ export default function Agents() {
     <section className="border-t border-border">
       <div className="max-w-6xl mx-auto px-6 py-20">
         <div className="section-label mb-8">SUPPORTED AGENTS</div>
-
-        <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-3">
-          Works with every agent.
-        </h2>
+        <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-3">Works with every agent.</h2>
         <p className="text-muted-2 font-mono text-sm mb-12 max-w-lg">
           specflow auto-detects which agent you use from your project structure.
           The init prompt lets you select multiple — it patches each one.
         </p>
 
-        {/* Leaderboard-style table — skills.sh inspired */}
         <div className="border border-border mb-12">
-          {/* Table header */}
           <div className="grid grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-4 py-3 border-b border-border bg-bg-2">
             <span className="text-muted font-mono text-[10px] tracking-wider">#</span>
             <span className="text-muted font-mono text-[10px] tracking-wider">AGENT</span>
             <span className="text-muted font-mono text-[10px] tracking-wider hidden md:block">FILE</span>
             <span className="text-muted font-mono text-[10px] tracking-wider text-right">DETECTION</span>
           </div>
-
-          {/* Agent rows */}
           {agents.map((agent) => (
-            <div
-              key={agent.id}
-              className="grid grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-4 py-3 border-b border-border last:border-b-0 row-hover"
-            >
+            <div key={agent.id} className="grid grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-4 py-3 border-b border-border last:border-b-0 row-hover">
               <span className="text-muted font-mono text-xs">{agent.rank}</span>
               <span className="text-text font-mono text-xs font-semibold">{agent.label}</span>
-              <span className="text-green font-mono text-xs hidden md:block">{agent.file}</span>
+              <span className="text-accent font-mono text-xs hidden md:block">{agent.file}</span>
               <span className="text-muted-2 font-mono text-[10px] text-right">
-                <span className="text-green mr-1">✓</span>auto
+                <span className="text-lime mr-1">✓</span>auto
               </span>
             </div>
           ))}
-
-          {/* Generic fallback row */}
           <div className="grid grid-cols-[40px_1fr_1fr_auto] md:grid-cols-[50px_180px_1fr_120px] gap-2 px-4 py-3 bg-bg-2">
             <span className="text-muted font-mono text-xs">—</span>
             <span className="text-muted-2 font-mono text-xs">Generic</span>
-            <span className="text-muted font-mono text-xs hidden md:block">AGENT_CONTEXT.md</span>
+            <span className="text-muted font-mono text-xs hidden md:block">CLAUDE.md / agents.md</span>
             <span className="text-muted font-mono text-[10px] text-right">fallback</span>
           </div>
         </div>
 
-        {/* Terminal demo */}
         <div className="border border-border max-w-2xl">
           <div className="terminal-header">
             <div className="terminal-dot bg-[#ff5f57]" />
@@ -67,20 +54,20 @@ export default function Agents() {
             <span className="text-muted text-xs ml-2">specflow init — multi-agent setup</span>
           </div>
           <div className="terminal-body">
-            <div><span className="text-muted-2">Auto-detected: </span><span className="text-green">Claude Code</span></div>
-            <div className="mt-2"><span className="text-blue">?</span><span className="text-text"> Which AI agents do you use?</span></div>
+            <div><span className="text-muted-2">Auto-detected: </span><span className="text-text">Claude Code</span></div>
+            <div className="mt-2"><span className="text-accent">?</span><span className="text-text"> Which AI agents do you use?</span></div>
             <div className="text-muted text-xs mt-1 ml-2">(space to select, enter to confirm)</div>
             <div className="mt-2 space-y-0.5">
-              <div><span className="text-green">◉</span> <span className="text-text">Claude Code</span>         <span className="text-muted text-xs">CLAUDE.md</span></div>
+              <div><span className="text-lime">◉</span> <span className="text-text">Claude Code</span>         <span className="text-muted text-xs">CLAUDE.md</span></div>
               <div><span className="text-muted">◯</span> <span className="text-muted-2">GitHub Copilot</span>    <span className="text-muted text-xs">.github/copilot-instructions.md</span></div>
-              <div><span className="text-green">◉</span> <span className="text-text">Cursor</span>              <span className="text-muted text-xs">.cursor/rules/specflow.mdc</span></div>
+              <div><span className="text-lime">◉</span> <span className="text-text">Cursor</span>              <span className="text-muted text-xs">.cursor/rules/specflow.mdc</span></div>
               <div><span className="text-muted">◯</span> <span className="text-muted-2">Windsurf (Codeium)</span><span className="text-muted text-xs">.windsurfrules</span></div>
               <div><span className="text-muted">◯</span> <span className="text-muted-2">OpenCode</span>          <span className="text-muted text-xs">agents.md</span></div>
             </div>
-            <div className="mt-3"><span className="text-green">✓</span> <span className="text-text">Agents: </span><span className="text-green">Claude Code, Cursor</span></div>
+            <div className="mt-3"><span className="text-lime">✓</span> <span className="text-text">Agents: </span><span className="text-text">Claude Code, Cursor</span></div>
             <div><span className="text-muted text-xs ml-4">claude-code → CLAUDE.md</span></div>
             <div><span className="text-muted text-xs ml-4">cursor → .cursor/rules/specflow.mdc</span></div>
-            <div className="mt-2"><span className="text-green">✓</span> <span className="text-text">Both agents patched with identical context</span></div>
+            <div className="mt-2"><span className="text-lime">✓</span> <span className="text-text">Both agents patched with identical context</span></div>
           </div>
         </div>
       </div>

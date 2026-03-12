@@ -69,6 +69,38 @@ export async function detectAgent(startDir) {
 }
 
 /**
+ * Smart agent detection: check env vars first, then fall back to marker files.
+ * Returns the agent user is most likely actively using.
+ */
+export async function detectAgentWithEnv(startDir) {
+  const env = process.env;
+
+  if (env.OPENCODE === "1" || env.OPENCODE === "true") {
+    return { agent: "opencode", root: startDir };
+  }
+  if (env.CLAUDE === "1" || env.CLAUDE === "true" || env.CLAUDE_API_KEY) {
+    return { agent: "claude-code", root: startDir };
+  }
+  if (env.CURSOR === "1" || env.CURSOR === "true") {
+    return { agent: "cursor", root: startDir };
+  }
+  if (env.WINDSURF === "1" || env.WINDSURF === "true") {
+    return { agent: "windsurf", root: startDir };
+  }
+  if (env.COPILOT === "1" || env.COPILOT === "true") {
+    return { agent: "copilot", root: startDir };
+  }
+  if (env.AIDER === "1" || env.AIDER === "true") {
+    return { agent: "aider", root: startDir };
+  }
+  if (env.CONTINUE === "1" || env.CONTINUE === "true") {
+    return { agent: "continue", root: startDir };
+  }
+
+  return detectAgent(startDir);
+}
+
+/**
  * Build the specflow context block — context-dense, low token.
  */
 export function buildBlock(cfg) {

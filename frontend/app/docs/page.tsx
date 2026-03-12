@@ -57,6 +57,7 @@ const sections = [
   { id: "skill", label: "skill" },
   { id: "sync", label: "sync" },
   { id: "analyze", label: "analyze" },
+  { id: "slash-commands", label: "Slash commands" },
   { id: "config", label: "Config file" },
   { id: "gitignore", label: ".gitignore" },
   { id: "plugin", label: "Plugin API" },
@@ -119,10 +120,11 @@ export default function Docs() {
             {[
               "Reads package.json / pyproject.toml / go.mod / Cargo.toml → detects stack",
               "Prompts multi-select: which agents do you use? (pre-selects detected one)",
-              "Patches each agent's context file simultaneously",
+              "Writes context directly into each agent's own file (CLAUDE.md, agents.md, etc.)",
               "Pulls skills from skills.sh for every detected dependency",
               "Optionally connects Obsidian vault",
-              "Writes SPECS/SEED.md and AGENT_CONTEXT.md",
+              "Initializes SPECS/ structure and SEED.md via OpenSpec",
+              "Creates /specflow-* slash commands for Claude Code and OpenCode",
               "Saves .specflow.json config",
             ].map((item) => (
               <li key={item} className="font-mono mb-1" style={{ color: "#555", fontSize: 12.5, lineHeight: 1.8 }}>
@@ -224,6 +226,28 @@ specflow analyze --force               # regenerate even if files exist
 specflow analyze --only stripe/node    # target specific skills`}</Code>
           <P>Uses <code style={{color:"#888"}}>claude-haiku-4-5</code> — fast and cheap. Set <code style={{color:"#888"}}>ANTHROPIC_API_KEY</code> in env to avoid passing --key every time.</P>
 
+          {/* ── slash commands ── */}
+          <H2 id="slash-commands">Slash commands</H2>
+          <P>For <G>Claude Code</G> and <G>OpenCode</G>, specflow init creates native slash commands. Type <code style={{color:"#888"}}>/specflow-</code> in the AI chat to see them.</P>
+          <P>These are <A>AI-native</A> — they instruct the AI agent itself to analyze your code and generate context, using the three-tool trinity (OpenSpec + skills.sh + Obsidian).</P>
+
+          <div style={{ border: "1px solid #141414", borderRadius: 6, overflow: "hidden", marginBottom: 20 }}>
+            {[
+              { cmd: "/specflow-init", desc: "AI scans codebase → writes to agent's context file (CLAUDE.md, etc.) + SPECS/SEED.md + .skills/" },
+              { cmd: "/specflow-spec", desc: "AI reads codebase + SEED.md → generates structured specs via OpenSpec lifecycle" },
+              { cmd: "/specflow-skill", desc: "AI analyzes code patterns → creates/evolves project-specific skills via skills.sh" },
+              { cmd: "/specflow-sync", desc: "AI reads Obsidian notes → routes by tag (#spec → OpenSpec, #pattern → skills.sh, #bug → memory)" },
+              { cmd: "/specflow-analyze", desc: "AI deep-dives codebase → generates detailed skill files with project-specific patterns" },
+            ].map(({ cmd, desc }) => (
+              <div key={cmd} style={{ borderBottom: "1px solid #141414", padding: "12px 16px", display: "grid", gridTemplateColumns: "200px 1fr", gap: 16 }}>
+                <code className="font-mono font-semibold" style={{ color: "#00e87a", fontSize: 12 }}>{cmd}</code>
+                <span className="font-mono" style={{ color: "#555", fontSize: 12 }}>{desc}</span>
+              </div>
+            ))}
+          </div>
+
+          <P>Supported agents: Claude Code (<code style={{color:"#888"}}>.claude/commands/</code>) and OpenCode (<code style={{color:"#888"}}>.opencode/commands/</code>). Other agents use CLI commands directly.</P>
+
           {/* ── config ── */}
           <H2 id="config">Config file (.specflow.json)</H2>
           <P>Auto-created by <code style={{color:"#888"}}>specflow init</code>. Persists state between commands.</P>
@@ -247,7 +271,7 @@ MEMORY/INDEX.md        # personal vault content
 .skills/               # downloaded skills — regenerated on demand
 
 # commit these
-# AGENT_CONTEXT.md
+# CLAUDE.md (or agents.md, .cursor/rules/, etc.)
 # SPECS/
 # .specflow/generation-spec.json`}</Code>
 

@@ -1,23 +1,25 @@
 "use client";
 
+import { Zap, Shuffle, Brain, FileText } from "lucide-react";
+
 const pains = [
   {
-    icon: "⚡",
+    icon: Zap,
     title: "CONTEXT DIES EVERY SESSION",
     desc: "You spend 10 minutes re-explaining your stack, patterns, and constraints to your agent. Every. Single. Time.",
   },
   {
-    icon: "🔀",
+    icon: Shuffle,
     title: "SWITCHING AGENTS BREAKS EVERYTHING",
     desc: "Moved from Cursor to Claude Code? Your carefully crafted prompts go nowhere. Start from scratch.",
   },
   {
-    icon: "🧠",
+    icon: Brain,
     title: "THE AGENT DOESN'T KNOW YOUR RULES",
     desc: "It uses raw SQL instead of Prisma. Skips auth middleware. Ignores the patterns you've built over months.",
   },
   {
-    icon: "📄",
+    icon: FileText,
     title: "SPECS LIVE IN YOUR HEAD",
     desc: "No structured spec means the agent implements the wrong thing, then you fix it, then it regresses.",
   },
@@ -37,20 +39,23 @@ export default function Problem() {
           specflow makes your project the context — persistent, structured, version-controlled.
         </p>
 
-        {/* 2×2 bordered grid — openspec.dev style */}
+        {/* 2×2 bordered grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 border border-border">
-          {pains.map((p, i) => (
-            <div
-              key={p.title}
-              className={`p-6 md:p-8 card-hover ${
-                i % 2 !== 0 ? "md:border-l border-border" : ""
-              } ${i >= 2 ? "border-t border-border" : ""}`}
-            >
-              <div className="text-xl mb-3">{p.icon}</div>
-              <h3 className="text-text font-mono font-semibold text-xs tracking-wider mb-3">{p.title}</h3>
-              <p className="text-muted-2 font-mono text-xs leading-relaxed">{p.desc}</p>
-            </div>
-          ))}
+          {pains.map((p, i) => {
+            const Icon = p.icon;
+            return (
+              <div
+                key={p.title}
+                className={`p-6 md:p-8 card-hover ${
+                  i % 2 !== 0 ? "md:border-l border-border" : ""
+                } ${i >= 2 ? "border-t border-border" : ""}`}
+              >
+                <Icon size={20} className="text-muted-2 mb-3" strokeWidth={1.5} />
+                <h3 className="text-text font-mono font-semibold text-xs tracking-wider mb-3">{p.title}</h3>
+                <p className="text-muted-2 font-mono text-xs leading-relaxed">{p.desc}</p>
+              </div>
+            );
+          })}
         </div>
 
         <div className="text-center mt-12">

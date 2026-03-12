@@ -1,6 +1,6 @@
 {
   "name": "specflow",
-  "version": "0.2.0",
+  "version": "0.2.3",
   "displayName": "Specflow",
   "description": "Universal AI workflow bootstrap plugin",
   "type": "ai-context-plugin",
@@ -26,9 +26,24 @@
     "api": "./plugin.mjs"
   },
   "activation": {
-    "onCommand": ["specflow.init", "specflow.detect", "specflow.update"],
+    "onCommand": [
+      "specflow.init",
+      "specflow.detect",
+      "specflow.update",
+      "specflow.spec",
+      "specflow.skill",
+      "specflow.sync",
+      "specflow.analyze"
+    ],
     "onFileChange": ["package.json", "pyproject.toml", "Cargo.toml", "go.mod"],
     "onStart": true
+  },
+  "slashCommands": {
+    "specflow-init":    "Bootstrap project with stack detection and context files",
+    "specflow-spec":    "OpenSpec lifecycle — propose, validate, archive specs",
+    "specflow-skill":   "Skills.sh lifecycle — search, install, create, evolve skills",
+    "specflow-sync":    "Bidirectional Obsidian vault sync",
+    "specflow-analyze": "AI code analysis for project-specific skill generation"
   },
   "documentation": {
     "url": "https://github.com/kousthubha-sky/workflow#plugin-api",

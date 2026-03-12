@@ -15,6 +15,7 @@ import fs from "fs/promises";
 import path from "path";
 import chalk from "chalk";
 import { execSync } from "child_process";
+import { writeSlashCommands } from "./command-writer.js";
 
 /**
  * Agent registry — everything we know about each agent's integration.
@@ -33,6 +34,7 @@ export const AGENTS = {
     postSetupSteps: [
       "Open Claude Code in this project — it reads CLAUDE.md automatically on every session",
       "No extension or plugin needed — CLAUDE.md is native to Claude Code",
+      "Type /specflow- to see all specflow slash commands in Claude Code chat",
       "Tag notes #specflow in Obsidian, then run: specflow sync",
     ],
   },
@@ -44,6 +46,7 @@ export const AGENTS = {
     setup:           setupOpenCode,
     postSetupSteps: [
       "OpenCode reads agents.md automatically — no extra config needed",
+      "Type /specflow- to see all specflow slash commands in OpenCode chat",
       "Run: specflow update to re-sync after stack changes",
     ],
   },
@@ -126,10 +129,29 @@ async function setupClaudeCode(agentRoot, block) {
     }, null, 2));
     console.log(chalk.green("✓") + " Created .claude/settings.json with context file references");
   }
+
+  // Write slash commands to .claude/commands/
+  const result = await writeSlashCommands("claude-code", agentRoot);
+  if (result.written.length > 0) {
+    console.log(
+      chalk.green("✓") +
+      ` Created ${chalk.bold(result.written.length)} slash commands in ` +
+      chalk.cyan(".claude/commands/")
+    );
+  }
 }
 
 async function setupOpenCode(agentRoot, block) {
-  // agents.md handled by agent-writer.js — nothing extra needed
+  // agents.md handled by agent-writer.js
+  // Write slash commands to .opencode/commands/
+  const result = await writeSlashCommands("opencode", agentRoot);
+  if (result.written.length > 0) {
+    console.log(
+      chalk.green("✓") +
+      ` Created ${chalk.bold(result.written.length)} slash commands in ` +
+      chalk.cyan(".opencode/commands/")
+    );
+  }
 }
 
 async function setupCopilot(agentRoot, block) {

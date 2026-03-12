@@ -1,6 +1,6 @@
 {
   "name": "@kousthubha/specflow",
-  "version": "0.2.0",
+  "version": "0.2.4",
   "description": "Universal AI workflow bootstrap — one command, any stack, any agent.",
   "type": "module",
   "bin": {
@@ -14,6 +14,7 @@
     "config/builtin-skills/",
     "plugin.mjs",
     "plugin.json",
+    "templates/commands/",
     "README.md"
   ],
   "exports": {
@@ -30,7 +31,7 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.0.0",
-    "glob": "^10.3.10",
+    "glob": "^11.0.0",
     "ora": "^8.0.1",
     "prompts": "^2.4.2"
   },
@@ -41,9 +42,23 @@
     "node": ">=18.0.0"
   },
   "keywords": [
-    "ai", "workflow", "claude-code", "copilot", "cursor", "windsurf",
-    "opencode", "skills", "openspec", "obsidian", "context",
-    "developer-tools", "cli", "sdd", "specflow", "plugin", "ai-context-plugin"
+    "ai",
+    "workflow",
+    "claude-code",
+    "copilot",
+    "cursor",
+    "windsurf",
+    "opencode",
+    "skills",
+    "openspec",
+    "obsidian",
+    "context",
+    "developer-tools",
+    "cli",
+    "sdd",
+    "specflow",
+    "plugin",
+    "ai-context-plugin"
   ],
   "homepage": "https://github.com/kousthubha-sky/workflow#readme",
   "repository": {

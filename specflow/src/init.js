@@ -2,9 +2,9 @@
  * init.js
  * Orchestrates the full `specflow init` flow.
  *
- * Key change: agent selection is now a multi-select prompt at the START,
- * not auto-detected silently. Users pick which agents they use, and
- * specflow sets up each one properly.
+ * Key change: agent selection is now a SINGLE-SELECT prompt.
+ * Only generates context files for the agent user actually uses.
+ * Keeps multi-agent support for backward compatibility (cfg.agents array).
  */
 
 import path from "path";
@@ -12,11 +12,12 @@ import chalk from "chalk";
 import prompts from "prompts";
 import { detectStack } from "./detect-stack.js";
 import { resolveSkills, installSkills } from "./skills-loader.js";
-import { detectAgent, updateAgent, writeAgentContext, AGENT_FILE_MAP } from "./agent-writer.js";
+import { detectAgent, detectAgentWithEnv, updateAgent, writeAgentContext, AGENT_FILE_MAP } from "./agent-writer.js";
 import { runAgentSetup, printAgentInstructions, AGENTS } from "./agent-setup.js";
 import { syncObsidian, discoverVaults } from "./obsidian-bridge.js";
 import { initSpecs } from "./spec-runner.js";
 import { writeConfig } from "./config.js";
+import { supportsSlashCommands, COMMAND_NAMES } from "./command-writer.js";
 
 const SKIP_SIGNALS     = new Set(["", "skip", "no", "n", "none", "later"]);
 const DISCOVER_SIGNALS = new Set(["discover", "--discover", "specflow sync --discover", "sync --discover"]);
@@ -38,20 +39,23 @@ export async function init(opts = {}) {
     console.log(chalk.green("✓") + " Stack detected: " + chalk.cyan(stack.join(", ")));
   }
 
-  // ── 2. Agent selection (multi-select) ─────────────────────────────────────
-  // First auto-detect what's already present
-  const { agent: detectedAgent, root: detectedRoot } = await detectAgent(cwd);
-
-  let selectedAgents; // string[]
-  let agentRoot = detectedRoot;
+  // ── 2. Agent selection (single-select) ────────────────────────────────────
+  // Auto-detect what's already present + check environment
+  const detected = await detectAgentWithEnv(cwd);
+  let selectedAgent;
+  let agentRoot = detected.root;
 
   if (opts.agent) {
-    // --agent flag: single forced agent
-    selectedAgents = [opts.agent];
+    // --agent flag: forced agent
+    selectedAgent = opts.agent;
+  } else if (detected.agent && detected.agent !== "generic") {
+    // Already using an agent - use that one
+    selectedAgent = detected.agent;
+    console.log(chalk.green("✓") + ` Detected: ${AGENTS[selectedAgent]?.label ?? selectedAgent}`);
   } else if (dryRun) {
-    selectedAgents = detectedAgent !== "generic" ? [detectedAgent] : ["claude-code"];
+    selectedAgent = "claude-code";
   } else {
-    // Build choices list — pre-check the detected one
+    // Prompt for single agent choice
     const agentChoices = [
       { title: "Claude Code",         value: "claude-code", description: "CLAUDE.md" },
       { title: "GitHub Copilot",      value: "copilot",     description: ".github/copilot-instructions.md" },
@@ -62,48 +66,22 @@ export async function init(opts = {}) {
       { title: "Aider",               value: "aider",       description: ".aider/context.md" },
     ];
 
-    // Pre-select detected agent
-    const preSelected = agentChoices
-      .map((c, i) => ({ ...c, i }))
-      .filter((c) => c.value === detectedAgent)
-      .map((c) => c.i);
-
-    console.log(
-      detectedAgent !== "generic"
-        ? chalk.dim(`  Auto-detected: ${AGENTS[detectedAgent]?.label ?? detectedAgent}\n`)
-        : chalk.dim("  No agent detected in this directory.\n")
-    );
-
-    const { chosen } = await prompts({
-      type:    "multiselect",
-      name:    "chosen",
-      message: "Which AI agents do you use? (space to select, enter to confirm)",
+    const { choice } = await prompts({
+      type:    "select",
+      name:    "choice",
+      message: "Which AI agent/editor are you using?",
       choices: agentChoices,
-      initial: preSelected,
-      hint:    "Select all that apply — specflow sets up each one",
-      instructions: false,
-      min: 1,
+      initial: 0,
+      hint:    "specflow generates context only for your selected agent",
     });
 
-    if (!chosen?.length) {
-      console.log(chalk.yellow("No agents selected — using generic fallback."));
-      selectedAgents = ["generic"];
-    } else {
-      selectedAgents = chosen;
-    }
+    selectedAgent = choice ?? "claude-code";
   }
 
-  // Show selected
-  const agentLabels = selectedAgents.map((id) => AGENTS[id]?.label ?? id).join(", ");
-  console.log(chalk.green("✓") + " Agents: " + chalk.cyan(agentLabels));
-
-  // Show which files will be written per agent
-  if (!dryRun) {
-    for (const agentId of selectedAgents) {
-      const file = AGENT_FILE_MAP[agentId] ?? "AGENT_CONTEXT.md";
-      console.log(chalk.dim(`    ${agentId} → ${file}`));
-    }
-  }
+  // Show which file will be written
+  const agentLabel = AGENTS[selectedAgent]?.label ?? selectedAgent;
+  const agentFile = AGENT_FILE_MAP[selectedAgent] ?? "AGENT_CONTEXT.md";
+  console.log(chalk.green("✓") + " Agent: " + chalk.cyan(agentLabel) + chalk.dim(` → ${agentFile}`));
 
   // ── 3. Resolve skills ──────────────────────────────────────────────────────
   const resolvedSkills = await resolveSkills(stack);
@@ -156,8 +134,8 @@ export async function init(opts = {}) {
 
   // ── 5. Build config ────────────────────────────────────────────────────────
   const cfg = {
-    agent:         selectedAgents[0],   // primary agent (backward compat)
-    agents:        selectedAgents,      // all selected agents
+    agent:         selectedAgent,
+    agents:        [selectedAgent],  // keep array for backward compat
     agentRoot:     agentRoot,
     stack,
     skills:        resolvedSkills,
@@ -171,14 +149,14 @@ export async function init(opts = {}) {
   if (dryRun) {
     console.log(chalk.bold.yellow("\n[dry-run] Plan:\n"));
     console.log(chalk.bold("  Files that would be written:"));
-    console.log(`    ${chalk.green("AGENT_CONTEXT.md")}       universal context`);
+    if (selectedAgent === "generic") {
+      console.log(`    ${chalk.green("AGENT_CONTEXT.md")}       universal context`);
+    }
     console.log(`    ${chalk.green("SPECS/SEED.md")}          decisions + patterns`);
     if (obsidianPath) console.log(`    ${chalk.green("MEMORY/INDEX.md")}        from Obsidian vault`);
-    for (const agentId of selectedAgents) {
-      const file = AGENT_FILE_MAP[agentId] ?? "AGENT_CONTEXT.md";
-      if (file !== "AGENT_CONTEXT.md")
-        console.log(`    ${chalk.green(file)}  ← ${agentId}`);
-    }
+    const file = AGENT_FILE_MAP[selectedAgent] ?? "AGENT_CONTEXT.md";
+    if (file !== "AGENT_CONTEXT.md")
+      console.log(`    ${chalk.green(file)}  ← ${selectedAgent}`);
     console.log(`    ${chalk.green(".skills/")}              one file per library`);
     console.log(`    ${chalk.green(".specflow.json")}       persisted config`);
     console.log(chalk.bold("\n  Config:"));
@@ -191,8 +169,11 @@ export async function init(opts = {}) {
   const { installed, builtin, placeholder } = await installSkills(resolvedSkills, cwd);
   cfg.skills = resolvedSkills;
 
-  // ── 7. Write AGENT_CONTEXT.md ─────────────────────────────────────────────
-  await writeAgentContext(cfg, cwd);
+  // ── 7. Write AGENT_CONTEXT.md only for generic (no agent detected) ────────
+  // When a specific agent is selected, that agent's file has all the context
+  if (selectedAgent === "generic") {
+    await writeAgentContext(cfg, cwd);
+  }
 
   // ── 8. Init SPECS/ ────────────────────────────────────────────────────────
   await initSpecs(cwd, stack);
@@ -205,21 +186,18 @@ export async function init(opts = {}) {
     else                cfg.obsidianPath = null;
   }
 
-  // ── 10. Set up each selected agent ────────────────────────────────────────
+  // ── 10. Set up selected agent ─────────────────────────────────────────────
   console.log("");
-  for (const agentId of selectedAgents) {
-    const { block } = await import("./agent-writer.js").then(m => ({
-      block: m.buildBlock(cfg)
-    }));
-    // Patch the agent's integration file
-    const { patchAgentFile } = await import("./agent-writer.js");
-    const { relPath } = await patchAgentFile(agentId, agentRoot, cfg);
-    const displayPath = path.relative(cwd, path.join(agentRoot, relPath)) || relPath;
-    console.log(chalk.green("✓") + ` Patched ${chalk.bold(displayPath)} [${chalk.cyan(agentId)}]`);
+  const { block } = await import("./agent-writer.js").then(m => ({
+    block: m.buildBlock(cfg)
+  }));
+  const { patchAgentFile } = await import("./agent-writer.js");
+  const { relPath } = await patchAgentFile(selectedAgent, agentRoot, cfg);
+  const displayPath = path.relative(cwd, path.join(agentRoot, relPath)) || relPath;
+  console.log(chalk.green("✓") + ` Patched ${chalk.bold(displayPath)} [${chalk.cyan(selectedAgent)}]`);
 
-    // Run any extra setup for this agent
-    await runAgentSetup(agentId, agentRoot, block);
-  }
+  // Run any extra setup for this agent
+  await runAgentSetup(selectedAgent, agentRoot, block);
 
   // ── 11. Save config ────────────────────────────────────────────────────────
   await writeConfig(cfg);
@@ -227,22 +205,25 @@ export async function init(opts = {}) {
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log(chalk.bold("Done. Written:"));
-  console.log(`  ${chalk.green("AGENT_CONTEXT.md")}     universal context`);
+  if (selectedAgent === "generic") {
+    console.log(`  ${chalk.green("AGENT_CONTEXT.md")}     universal context`);
+  }
   console.log(`  ${chalk.green("SPECS/SEED.md")}        fill in decisions + patterns`);
   if (obsidianSynced)
     console.log(`  ${chalk.green("MEMORY/INDEX.md")}      synced from Obsidian`);
-  for (const agentId of selectedAgents) {
-    const file = AGENT_FILE_MAP[agentId] ?? "AGENT_CONTEXT.md";
-    if (file !== "AGENT_CONTEXT.md")
-      console.log(`  ${chalk.green(file)}`);
-  }
+  const file = AGENT_FILE_MAP[selectedAgent] ?? "AGENT_CONTEXT.md";
+  if (file !== "AGENT_CONTEXT.md")
+    console.log(`  ${chalk.green(file)}`);
   console.log(`  ${chalk.green(".skills/")}            ${installed.length} registry · ${builtin.length} builtin · ${placeholder.length} placeholder`);
   console.log(`  ${chalk.green(".specflow.json")}     persisted config`);
 
-  // Per-agent post-setup instructions
-  for (const agentId of selectedAgents) {
-    printAgentInstructions(agentId);
+  // Show slash command summary for supported agents
+  if (supportsSlashCommands(selectedAgent)) {
+    console.log(`  ${chalk.green("slash commands")}      ${COMMAND_NAMES.length} commands for ${selectedAgent}`);
   }
+
+  // Per-agent post-setup instructions
+  printAgentInstructions(selectedAgent);
 
   console.log(chalk.bold("\nWorkflow:"));
   console.log(chalk.dim("  specflow spec \"<feature>\"  — propose a spec before coding"));

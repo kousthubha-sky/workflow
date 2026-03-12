@@ -16,18 +16,20 @@ const config: Config = {
         "bg-2": "#0a0a0a",
         "bg-3": "#111111",
         "bg-4": "#181818",
-        border: "#222222",
-        "border-2": "#333333",
-        text: "#e2e2e2",
+        border: "#1a1a1a",
+        "border-2": "#2a2a2a",
+        text: "#ececec",
         muted: "#555555",
-        "muted-2": "#888888",
-        green: "#00ff87",
-        "green-dim": "#00ff8722",
-        amber: "#f59e0b",
-        "amber-dim": "#f59e0b22",
-        blue: "#60a5fa",
+        "muted-2": "#999999",
+        accent: "#3b82f6",       // blue glow — primary accent
+        "accent-dim": "#3b82f622",
+        lime: "#bef264",         // lime — status/success only
+        "lime-dim": "#bef26422",
+        amber: "#fbbf24",        // amber — secondary highlights
+        "amber-dim": "#fbbf2422",
+        blue: "#60a5fa",         // blue — info/tertiary
         "blue-dim": "#60a5fa22",
-        purple: "#a78bfa",
+        purple: "#a78bfa",       // purple — extras
         "purple-dim": "#a78bfa22",
       },
       animation: {
@@ -35,8 +37,6 @@ const config: Config = {
         "fade-in": "fadeIn 0.4s ease forwards",
         blink: "blink 1s step-end infinite",
         float: "float 6s ease-in-out infinite",
-        glow: "glow 2s ease-in-out infinite alternate",
-        "border-pulse": "borderPulse 2s ease-in-out infinite",
       },
       keyframes: {
         fadeUp: {
@@ -54,14 +54,6 @@ const config: Config = {
         float: {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-6px)" },
-        },
-        glow: {
-          "0%": { boxShadow: "0 0 20px #00ff8711" },
-          "100%": { boxShadow: "0 0 40px #00ff8722, 0 0 80px #00ff870a" },
-        },
-        borderPulse: {
-          "0%, 100%": { borderColor: "#222222" },
-          "50%": { borderColor: "#333333" },
         },
       },
     },
