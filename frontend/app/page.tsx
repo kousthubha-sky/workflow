@@ -7,6 +7,7 @@ import Files from "@/components/files";
 import Agents from "@/components/agents";
 import Commands from "@/components/commands";
 import Footer from "@/components/footer";
+import { Analytics } from "@vercel/analytics/next"
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
       <Agents />
       <Commands />
       <Footer />
+      <Analytics />
     </main>
   );
 }
