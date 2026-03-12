@@ -17,7 +17,7 @@ const fail = (msg, got, want) =>
   console.log(chalk.red("✗ FAIL") + `  ${msg}\n       got:  ${JSON.stringify(got)}\n       want: ${JSON.stringify(want)}`);
 
 async function withTempDir(fn) {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "specflow-cmd-test-"));
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "persistent-cmd-test-"));
   try {
     return await fn(tmpDir);
   } finally {
@@ -26,7 +26,7 @@ async function withTempDir(fn) {
 }
 
 async function run() {
-  console.log(chalk.bold("\nspecflow · command-writer smoke tests\n"));
+  console.log(chalk.bold("\npersistent · command-writer smoke tests\n"));
 
   // ── Test 1: Claude Code slash commands ────────────────────────────────
   await withTempDir(async (dir) => {

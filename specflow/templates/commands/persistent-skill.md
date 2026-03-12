@@ -1,4 +1,4 @@
-You are running specflow skill — the skills.sh lifecycle manager.
+You are running persistent skill — the skills.sh lifecycle manager.
 
 Skills are markdown files in `.skills/` that provide library-specific patterns, best practices, and code templates. They are read as context during every AI session — making you smarter about how THIS project uses its dependencies.
 
@@ -46,7 +46,7 @@ This command integrates with **skills.sh** — the AI skill registry. When avail
 3. Read `.skills/.manifest.json` to determine which skills came from the registry vs local
 4. Report what changed
 
-### Install a specific skill (just a skill ID, e.g., `/specflow-skill supabase/rls-patterns`)
+### Install a specific skill (just a skill ID, e.g., `/persistent-skill supabase/rls-patterns`)
 
 1. **Try skills.sh CLI:** Run `npx skills add <skill-id>` to install from registry
 2. If CLI unavailable, fetch from https://skills.sh and save to `.skills/<owner>/<name>.md`

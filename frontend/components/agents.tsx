@@ -2,7 +2,7 @@
 
 const agents = [
   { rank: 1, id: "claude-code", label: "Claude Code", file: "CLAUDE.md", detect: "CLAUDE.md in repo root" },
-  { rank: 2, id: "cursor", label: "Cursor", file: ".cursor/rules/specflow.mdc", detect: ".cursor/ directory" },
+  { rank: 2, id: "cursor", label: "Cursor", file: ".cursor/rules/persistent.mdc", detect: ".cursor/ directory" },
   { rank: 3, id: "copilot", label: "GitHub Copilot", file: ".github/copilot-instructions.md", detect: ".github/copilot-instructions.md" },
   { rank: 4, id: "windsurf", label: "Windsurf", file: ".windsurfrules", detect: ".windsurfrules file" },
   { rank: 5, id: "opencode", label: "OpenCode", file: "agents.md", detect: "agents.md in root" },
@@ -17,7 +17,7 @@ export default function Agents() {
         <div className="section-label mb-6 sm:mb-8">SUPPORTED AGENTS</div>
         <h2 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-text mb-3">Works with every agent.</h2>
         <p className="text-muted-2 font-mono text-xs sm:text-sm mb-8 sm:mb-12 max-w-lg">
-          specflow auto-detects which agent you use from your project structure.
+          persistent auto-detects which agent you use from your project structure.
           The init prompt lets you select multiple — it patches each one.
         </p>
 
@@ -51,7 +51,7 @@ export default function Agents() {
             <div className="terminal-dot bg-[#ff5f57]" />
             <div className="terminal-dot bg-[#febc2e]" />
             <div className="terminal-dot bg-[#28c840]" />
-            <span className="text-muted text-xs ml-2">specflow init — multi-agent setup</span>
+            <span className="text-muted text-xs ml-2">persistent init — multi-agent setup</span>
           </div>
           <div className="terminal-body">
             <div><span className="text-muted-2">Auto-detected: </span><span className="text-text">Claude Code</span></div>
@@ -60,13 +60,13 @@ export default function Agents() {
             <div className="mt-2 space-y-0.5">
               <div><span className="text-lime">◉</span> <span className="text-text">Claude Code</span>         <span className="text-muted text-xs">CLAUDE.md</span></div>
               <div><span className="text-muted">◯</span> <span className="text-muted-2">GitHub Copilot</span>    <span className="text-muted text-xs">.github/copilot-instructions.md</span></div>
-              <div><span className="text-lime">◉</span> <span className="text-text">Cursor</span>              <span className="text-muted text-xs">.cursor/rules/specflow.mdc</span></div>
+              <div><span className="text-lime">◉</span> <span className="text-text">Cursor</span>              <span className="text-muted text-xs">.cursor/rules/persistent.mdc</span></div>
               <div><span className="text-muted">◯</span> <span className="text-muted-2">Windsurf (Codeium)</span><span className="text-muted text-xs">.windsurfrules</span></div>
               <div><span className="text-muted">◯</span> <span className="text-muted-2">OpenCode</span>          <span className="text-muted text-xs">agents.md</span></div>
             </div>
             <div className="mt-3"><span className="text-lime">✓</span> <span className="text-text">Agents: </span><span className="text-text">Claude Code, Cursor</span></div>
             <div><span className="text-muted text-xs ml-4">claude-code → CLAUDE.md</span></div>
-            <div><span className="text-muted text-xs ml-4">cursor → .cursor/rules/specflow.mdc</span></div>
+            <div><span className="text-muted text-xs ml-4">cursor → .cursor/rules/persistent.mdc</span></div>
             <div className="mt-2"><span className="text-lime">✓</span> <span className="text-text">Both agents patched with identical context</span></div>
           </div>
         </div>

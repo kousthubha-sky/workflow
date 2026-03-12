@@ -1,6 +1,6 @@
 /**
  * init.js
- * Orchestrates the full `specflow init` flow.
+ * Orchestrates the full `persistent init` flow.
  *
  * Key change: agent selection is now a SINGLE-SELECT prompt.
  * Only generates context files for the agent user actually uses.
@@ -20,13 +20,13 @@ import { writeConfig } from "./config.js";
 import { supportsSlashCommands, COMMAND_NAMES } from "./command-writer.js";
 
 const SKIP_SIGNALS     = new Set(["", "skip", "no", "n", "none", "later"]);
-const DISCOVER_SIGNALS = new Set(["discover", "--discover", "specflow sync --discover", "sync --discover"]);
+const DISCOVER_SIGNALS = new Set(["discover", "--discover", "persistent sync --discover", "sync --discover"]);
 
 export async function init(opts = {}) {
   const cwd    = process.cwd();
   const dryRun = opts.dryRun ?? false;
 
-  console.log("\n" + chalk.bold("specflow") + chalk.dim(" · universal AI workflow bootstrap\n"));
+  console.log("\n" + chalk.bold("persistent") + chalk.dim(" · universal AI workflow bootstrap\n"));
 
   // ── 1. Detect stack ────────────────────────────────────────────────────────
   const { keys: stack, raw: matchedDeps } = await detectStack(cwd);
@@ -59,7 +59,7 @@ export async function init(opts = {}) {
     const agentChoices = [
       { title: "Claude Code",         value: "claude-code", description: "CLAUDE.md" },
       { title: "GitHub Copilot",      value: "copilot",     description: ".github/copilot-instructions.md" },
-      { title: "Cursor",              value: "cursor",       description: ".cursor/rules/specflow.mdc" },
+      { title: "Cursor",              value: "cursor",       description: ".cursor/rules/persistent.mdc" },
       { title: "Windsurf (Codeium)",  value: "windsurf",    description: ".windsurfrules" },
       { title: "OpenCode",            value: "opencode",    description: "agents.md" },
       { title: "Continue.dev",        value: "continue",    description: ".continue/context.md" },
@@ -72,7 +72,7 @@ export async function init(opts = {}) {
       message: "Which AI agent/editor are you using?",
       choices: agentChoices,
       initial: 0,
-      hint:    "specflow generates context only for your selected agent",
+      hint:    "persistent generates context only for your selected agent",
     });
 
     selectedAgent = choice ?? "claude-code";
@@ -129,7 +129,7 @@ export async function init(opts = {}) {
   if (obsidianPath) {
     console.log(chalk.green("✓") + " Obsidian vault: " + chalk.cyan(obsidianPath));
   } else if (!dryRun) {
-    console.log(chalk.dim("  Obsidian: skipped — run `specflow sync --discover` later"));
+    console.log(chalk.dim("  Obsidian: skipped — run `persistent sync --discover` later"));
   }
 
   // ── 5. Build config ────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ export async function init(opts = {}) {
     if (file !== "AGENT_CONTEXT.md")
       console.log(`    ${chalk.green(file)}  ← ${selectedAgent}`);
     console.log(`    ${chalk.green(".skills/")}              one file per library`);
-    console.log(`    ${chalk.green(".specflow.json")}       persisted config`);
+    console.log(`    ${chalk.green(".persistent.json")}       persisted config`);
     console.log(chalk.bold("\n  Config:"));
     console.log(chalk.dim(JSON.stringify(cfg, null, 4).split("\n").map((l) => "    " + l).join("\n")));
     console.log(chalk.bold.yellow("\n  Remove --dry-run to execute.\n"));
@@ -201,7 +201,7 @@ export async function init(opts = {}) {
 
   // ── 11. Save config ────────────────────────────────────────────────────────
   await writeConfig(cfg);
-  console.log(chalk.green("\n✓") + " Config saved to .specflow.json\n");
+  console.log(chalk.green("\n✓") + " Config saved to .persistent.json\n");
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log(chalk.bold("Done. Written:"));
@@ -215,7 +215,7 @@ export async function init(opts = {}) {
   if (file !== "AGENT_CONTEXT.md")
     console.log(`  ${chalk.green(file)}`);
   console.log(`  ${chalk.green(".skills/")}            ${installed.length} registry · ${builtin.length} builtin · ${placeholder.length} placeholder`);
-  console.log(`  ${chalk.green(".specflow.json")}     persisted config`);
+  console.log(`  ${chalk.green(".persistent.json")}     persisted config`);
 
   // Show slash command summary for supported agents
   if (supportsSlashCommands(selectedAgent)) {
@@ -226,7 +226,7 @@ export async function init(opts = {}) {
   printAgentInstructions(selectedAgent);
 
   console.log(chalk.bold("\nWorkflow:"));
-  console.log(chalk.dim("  specflow spec \"<feature>\"  — propose a spec before coding"));
-  console.log(chalk.dim("  specflow sync              — re-pull Obsidian vault"));
-  console.log(chalk.dim("  specflow update            — re-run after stack or agent changes\n"));
+  console.log(chalk.dim("  persistent spec \"<feature>\"  — propose a spec before coding"));
+  console.log(chalk.dim("  persistent sync              — re-pull Obsidian vault"));
+  console.log(chalk.dim("  persistent update            — re-run after stack or agent changes\n"));
 }

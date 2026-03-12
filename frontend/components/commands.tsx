@@ -6,48 +6,48 @@ const groups = [
     label: "Core",
     color: "#3b82f6",
     cmds: [
-      { cmd: "specflow init", flags: "[--agent <id>] [--obsidian <path>] [--dry-run]", desc: "Full bootstrap. Detects stack, installs skills, patches agent files, connects Obsidian.", example: "specflow init --obsidian ~/obsidian/MyVault" },
-      { cmd: "specflow update", flags: "[--agent <id>]", desc: "Re-patch agent file from current config. Run after stack changes or adding a new agent.", example: "specflow update --agent cursor" },
+      { cmd: "persistent init", flags: "[--agent <id>] [--obsidian <path>] [--dry-run]", desc: "Full bootstrap. Detects stack, installs skills, patches agent files, connects Obsidian.", example: "persistent init --obsidian ~/obsidian/MyVault" },
+      { cmd: "persistent update", flags: "[--agent <id>]", desc: "Re-patch agent file from current config. Run after stack changes or adding a new agent.", example: "persistent update --agent cursor" },
     ],
   },
   {
     label: "Spec lifecycle",
     color: "#fbbf24",
     cmds: [
-      { cmd: 'specflow spec "<feature>"', flags: "", desc: "Propose a new feature spec. Creates proposal.md, design.md, tasks.md under SPECS/active/.", example: 'specflow spec "add razorpay payments"' },
-      { cmd: "specflow spec --validate <slug>", flags: "", desc: "Validate a spec against SEED.md constraints and generation-spec rules.", example: "specflow spec --validate add-razorpay-payments" },
-      { cmd: "specflow spec --archive <slug>", flags: "", desc: "Archive a completed spec. Extracts patterns → evolves SEED.md. Writes back to Obsidian vault.", example: "specflow spec --archive add-razorpay-payments" },
-      { cmd: "specflow spec --list", flags: "", desc: "List all active specs with progress (completed/total tasks).", example: "specflow spec --list" },
-      { cmd: "specflow spec --seed", flags: "", desc: "Regenerate SEED.md from all archived spec patterns from scratch.", example: "specflow spec --seed" },
+      { cmd: 'persistent spec "<feature>"', flags: "", desc: "Propose a new feature spec. Creates proposal.md, design.md, tasks.md under SPECS/active/.", example: 'persistent spec "add razorpay payments"' },
+      { cmd: "persistent spec --validate <slug>", flags: "", desc: "Validate a spec against SEED.md constraints and generation-spec rules.", example: "persistent spec --validate add-razorpay-payments" },
+      { cmd: "persistent spec --archive <slug>", flags: "", desc: "Archive a completed spec. Extracts patterns → evolves SEED.md. Writes back to Obsidian vault.", example: "persistent spec --archive add-razorpay-payments" },
+      { cmd: "persistent spec --list", flags: "", desc: "List all active specs with progress (completed/total tasks).", example: "persistent spec --list" },
+      { cmd: "persistent spec --seed", flags: "", desc: "Regenerate SEED.md from all archived spec patterns from scratch.", example: "persistent spec --seed" },
     ],
   },
   {
     label: "Skills",
     color: "#fbbf24",
     cmds: [
-      { cmd: "specflow add-skill <skill>", flags: "", desc: "Install a specific skill and update the agent's context file.", example: "specflow add-skill supabase/rls-patterns" },
-      { cmd: "specflow skill --search <query>", flags: "", desc: "Search the skills.sh registry for relevant skills.", example: 'specflow skill --search "react auth"' },
-      { cmd: "specflow skill --create <id>", flags: "", desc: "Create a skill from your project patterns and Obsidian #pattern notes.", example: "specflow skill --create myteam/auth-patterns" },
-      { cmd: "specflow skill --evolve <id>", flags: "", desc: "Merge new patterns into an existing skill file.", example: "specflow skill --evolve myteam/auth-patterns" },
-      { cmd: "specflow skill --update", flags: "", desc: "Update all installed skills to latest versions via skills.sh.", example: "specflow skill --update" },
-      { cmd: "specflow skill --list", flags: "", desc: "List all installed skills with source and version.", example: "specflow skill --list" },
+      { cmd: "persistent add-skill <skill>", flags: "", desc: "Install a specific skill and update the agent's context file.", example: "persistent add-skill supabase/rls-patterns" },
+      { cmd: "persistent skill --search <query>", flags: "", desc: "Search the skills.sh registry for relevant skills.", example: 'persistent skill --search "react auth"' },
+      { cmd: "persistent skill --create <id>", flags: "", desc: "Create a skill from your project patterns and Obsidian #pattern notes.", example: "persistent skill --create myteam/auth-patterns" },
+      { cmd: "persistent skill --evolve <id>", flags: "", desc: "Merge new patterns into an existing skill file.", example: "persistent skill --evolve myteam/auth-patterns" },
+      { cmd: "persistent skill --update", flags: "", desc: "Update all installed skills to latest versions via skills.sh.", example: "persistent skill --update" },
+      { cmd: "persistent skill --list", flags: "", desc: "List all installed skills with source and version.", example: "persistent skill --list" },
     ],
   },
   {
     label: "Obsidian sync",
     color: "#a78bfa",
     cmds: [
-      { cmd: "specflow sync", flags: "", desc: "Bidirectional sync. Pull tagged notes → route to OpenSpec/skills/memory. Push specs/SEED → vault.", example: "specflow sync" },
-      { cmd: "specflow sync --discover", flags: "", desc: "Auto-discover Obsidian vaults on this machine from Obsidian's own config.", example: "specflow sync --discover" },
-      { cmd: 'specflow sync --pin <folder>', flags: "", desc: "Add a vault folder to the always-pull list. Persists to .specflow.json.", example: 'specflow sync --pin "Projects/OneRouter"' },
-      { cmd: "specflow sync --one-way", flags: "", desc: "Pull-only mode (legacy). Skips write-back to vault.", example: "specflow sync --one-way" },
+      { cmd: "persistent sync", flags: "", desc: "Bidirectional sync. Pull tagged notes → route to OpenSpec/skills/memory. Push specs/SEED → vault.", example: "persistent sync" },
+      { cmd: "persistent sync --discover", flags: "", desc: "Auto-discover Obsidian vaults on this machine from Obsidian's own config.", example: "persistent sync --discover" },
+      { cmd: 'persistent sync --pin <folder>', flags: "", desc: "Add a vault folder to the always-pull list. Persists to .persistent.json.", example: 'persistent sync --pin "Projects/OneRouter"' },
+      { cmd: "persistent sync --one-way", flags: "", desc: "Pull-only mode (legacy). Skips write-back to vault.", example: "persistent sync --one-way" },
     ],
   },
   {
     label: "Analysis",
     color: "#60a5fa",
     cmds: [
-      { cmd: "specflow analyze", flags: "[--key <key>] [--force] [--only <skills>]", desc: "AI-analyze your code → generate project-specific skill files. Requires ANTHROPIC_API_KEY.", example: "specflow analyze --only vercel/nextjs,prisma/best-practices" },
+      { cmd: "persistent analyze", flags: "[--key <key>] [--force] [--only <skills>]", desc: "AI-analyze your code → generate project-specific skill files. Requires ANTHROPIC_API_KEY.", example: "persistent analyze --only vercel/nextjs,prisma/best-practices" },
     ],
   },
 ];
@@ -101,26 +101,26 @@ export default function Commands() {
           <div className="grid grid-cols-1 md:grid-cols-2">
             <div className="p-4 sm:p-6 md:border-r border-border">
               <p className="text-muted-2 font-mono text-[10px] sm:text-xs leading-relaxed mb-4">
-                Use specflow as a library inside your own CLI tool or editor extension.
+                Use persistent as a library inside your own CLI tool or editor extension.
                 Register your native AI instance for spec-driven context generation.
               </p>
-              <div className="text-accent font-mono text-[10px] sm:text-xs break-all">npm install @kousthubha/specflow</div>
+              <div className="text-accent font-mono text-[10px] sm:text-xs break-all">npm install @kousthubha/persistent</div>
             </div>
             <div className="p-4 sm:p-6 bg-bg overflow-x-auto">
               <pre className="text-[10px] sm:text-xs font-mono leading-relaxed">
                 <span className="text-muted">{"// Claude Code, Cursor, Windsurf, etc.\n"}</span>
                 <span className="text-accent">{"import"}</span>
-                <span className="text-text">{" { createSpecflowPlugin } "}</span>
+                <span className="text-text">{" { createPersistentPlugin } "}</span>
                 <span className="text-accent">{"from"}</span>
-                <span className="text-lime">{" '@kousthubha/specflow/plugin';\n\n"}</span>
+                <span className="text-lime">{" '@kousthubha/persistent/plugin';\n\n"}</span>
                 <span className="text-accent">{"const"}</span>
-                <span className="text-text">{" sf = "}</span>
+                <span className="text-text">{" pst = "}</span>
                 <span className="text-accent">{"await"}</span>
-                <span className="text-text">{" createSpecflowPlugin(root);\n"}</span>
+                <span className="text-text">{" createPersistentPlugin(root);\n"}</span>
                 <span className="text-accent">{"await"}</span>
-                <span className="text-text">{" sf.registerCliAI(nativeAI);\n"}</span>
+                <span className="text-text">{" pst.registerCliAI(nativeAI);\n"}</span>
                 <span className="text-accent">{"await"}</span>
-                <span className="text-text">{" sf.detectAndSetup({ useCliAI: "}</span>
+                <span className="text-text">{" pst.detectAndSetup({ useCliAI: "}</span>
                 <span className="text-lime">{"true"}</span>
                 <span className="text-text">{" });"}</span>
               </pre>

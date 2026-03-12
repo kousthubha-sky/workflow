@@ -71,7 +71,7 @@ export default function Docs() {
       {/* nav */}
       <nav style={{ borderBottom: "1px solid #141414", background: "#09090999", backdropFilter: "blur(12px)", position: "fixed", top: 0, left: 0, right: 0, zIndex: 50 }}>
         <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
-          <Link href="/" className="font-mono font-bold text-sm" style={{ color: "#00e87a" }}>specflow</Link>
+          <Link href="/" className="font-mono font-bold text-sm" style={{ color: "#00e87a" }}>persistent</Link>
           <div className="flex items-center gap-5">
             <Link href="/" className="font-mono text-xs" style={{ color: "#444" }}>← home</Link>
             <a href="https://github.com/kousthubha-sky/workflow" target="_blank" rel="noopener noreferrer"
@@ -100,20 +100,20 @@ export default function Docs() {
         {/* content */}
         <main className="flex-1 min-w-0" style={{ maxWidth: 720 }}>
           <div className="font-mono font-bold mb-1" style={{ color: "#d4d4d4", fontSize: "1.8rem" }}>Documentation</div>
-          <P>Everything you need to use specflow in your project.</P>
+          <P>Everything you need to use persistent in your project.</P>
 
           {/* ── Install ── */}
           <H2 id="install">Installation</H2>
           <P>Run without installing (recommended for first use):</P>
-          <Code>{`npx @kousthubha/specflow init`}</Code>
+          <Code>{`npx @kousthubha/persistent init`}</Code>
           <P>Or install globally:</P>
-          <Code>{`npm install -g @kousthubha/specflow`}</Code>
+          <Code>{`npm install -g @kousthubha/persistent`}</Code>
           <P>Requires Node 18+. No API keys needed for core features — only <code style={{color:"#888"}}>analyze</code> uses Anthropic.</P>
 
           {/* ── init ── */}
-          <H2 id="init">specflow init</H2>
+          <H2 id="init">persistent init</H2>
           <P>Full project bootstrap. Run once from your project root.</P>
-          <Code>{`specflow init [--agent <id>] [--obsidian <path>] [--dry-run]`}</Code>
+          <Code>{`persistent init [--agent <id>] [--obsidian <path>] [--dry-run]`}</Code>
 
           <P>What it does:</P>
           <ul style={{ paddingLeft: 20, marginBottom: 16 }}>
@@ -124,8 +124,8 @@ export default function Docs() {
               "Pulls skills from skills.sh for every detected dependency",
               "Optionally connects Obsidian vault",
               "Initializes SPECS/ structure and SEED.md via OpenSpec",
-              "Creates /specflow-* slash commands for Claude Code and OpenCode",
-              "Saves .specflow.json config",
+              "Creates /persistent-* slash commands for Claude Code and OpenCode",
+              "Saves .persistent.json config",
             ].map((item) => (
               <li key={item} className="font-mono mb-1" style={{ color: "#555", fontSize: 12.5, lineHeight: 1.8 }}>
                 <G>→</G> {item}
@@ -148,14 +148,14 @@ export default function Docs() {
           </div>
 
           {/* ── spec ── */}
-          <H2 id="spec">specflow spec</H2>
+          <H2 id="spec">persistent spec</H2>
           <P>OpenSpec lifecycle — propose, validate, archive, list, regenerate SEED.</P>
 
-          <Cmd cmd={`specflow spec "add feature name"`} desc="Propose a new spec. Creates SPECS/active/<slug>/ with proposal.md, design.md, tasks.md." />
-          <Cmd cmd="specflow spec --validate <slug>" desc="Validate a spec against SEED.md constraints and generation-spec rules. Catches missing sections, SEED conflicts." />
-          <Cmd cmd="specflow spec --archive <slug>" desc="Archive a completed spec. Extracts patterns from design.md, merges into SEED.md. Moves spec to SPECS/archive/. Writes spec back to Obsidian vault." />
-          <Cmd cmd="specflow spec --list" desc="List all active specs with task completion progress." />
-          <Cmd cmd="specflow spec --seed" desc="Regenerate SEED.md from all archived spec patterns." />
+          <Cmd cmd={`persistent spec "add feature name"`} desc="Propose a new spec. Creates SPECS/active/<slug>/ with proposal.md, design.md, tasks.md." />
+          <Cmd cmd="persistent spec --validate <slug>" desc="Validate a spec against SEED.md constraints and generation-spec rules. Catches missing sections, SEED conflicts." />
+          <Cmd cmd="persistent spec --archive <slug>" desc="Archive a completed spec. Extracts patterns from design.md, merges into SEED.md. Moves spec to SPECS/archive/. Writes spec back to Obsidian vault." />
+          <Cmd cmd="persistent spec --list" desc="List all active specs with task completion progress." />
+          <Cmd cmd="persistent spec --seed" desc="Regenerate SEED.md from all archived spec patterns." />
 
           <H3>Spec file structure</H3>
           <Code lang="text">{`SPECS/
@@ -169,34 +169,34 @@ export default function Docs() {
     └── 2026-03-11-add-payments/     ← completed specs`}</Code>
 
           {/* ── skill ── */}
-          <H2 id="skill">specflow skill</H2>
+          <H2 id="skill">persistent skill</H2>
           <P>Skills.sh lifecycle — search, create, evolve, update installed skills.</P>
 
-          <Cmd cmd="specflow skill --search &quot;react auth&quot;" desc="Search the skills.sh community registry for matching skills." />
-          <Cmd cmd="specflow skill --list" desc="List all installed skills with source (registry/builtin/placeholder) and version." />
-          <Cmd cmd="specflow skill --create <owner/name>" desc="Create a skill from your project patterns + tagged Obsidian notes. Uses AI if ANTHROPIC_API_KEY is set." />
-          <Cmd cmd="specflow skill --evolve <owner/name>" desc="Merge new patterns into an existing skill file." />
-          <Cmd cmd="specflow skill --update" desc="Update all installed skills to latest versions via skills.sh CLI." />
-          <Cmd cmd="specflow add-skill <owner/name>" desc="Install a specific skill directly. Falls back: registry → builtin → placeholder." />
+          <Cmd cmd="persistent skill --search &quot;react auth&quot;" desc="Search the skills.sh community registry for matching skills." />
+          <Cmd cmd="persistent skill --list" desc="List all installed skills with source (registry/builtin/placeholder) and version." />
+          <Cmd cmd="persistent skill --create <owner/name>" desc="Create a skill from your project patterns + tagged Obsidian notes. Uses AI if ANTHROPIC_API_KEY is set." />
+          <Cmd cmd="persistent skill --evolve <owner/name>" desc="Merge new patterns into an existing skill file." />
+          <Cmd cmd="persistent skill --update" desc="Update all installed skills to latest versions via skills.sh CLI." />
+          <Cmd cmd="persistent add-skill <owner/name>" desc="Install a specific skill directly. Falls back: registry → builtin → placeholder." />
 
           <H3>Install priority</H3>
           <P>For each skill: <G>skills.sh registry</G> → <A>bundled builtin</A> → <M>placeholder file</M>. Manifest tracked at .skills/.manifest.json.</P>
 
           {/* ── sync ── */}
-          <H2 id="sync">specflow sync</H2>
+          <H2 id="sync">persistent sync</H2>
           <P>Bidirectional Obsidian sync. Pulls notes in, routes them by tag, pushes specs and SEED back to vault.</P>
 
-          <Code>{`specflow sync                          # bidirectional (default)
-specflow sync --one-way               # pull from vault only
-specflow sync --discover              # auto-find Obsidian vaults on this machine
-specflow sync --pin "Projects/App"    # pin a vault folder to always pull`}</Code>
+          <Code>{`persistent sync                          # bidirectional (default)
+persistent sync --one-way               # pull from vault only
+persistent sync --discover              # auto-find Obsidian vaults on this machine
+persistent sync --pin "Projects/App"    # pin a vault folder to always pull`}</Code>
 
           <H3>Tag routing</H3>
           <div style={{ border: "1px solid #141414", borderRadius: 6, overflow: "hidden", marginBottom: 20 }}>
             {[
               { tags: "#spec, #decision, #architecture", dest: "OpenSpec — feeds spec proposals and SEED.md evolution", color: "#00e87a" },
               { tags: "#pattern, #skill, #best-practice, #convention", dest: "Skills.sh — feeds skill creation and evolution", color: "#f59e0b" },
-              { tags: "#specflow, #hot, #bug, #workflow", dest: "Memory — MEMORY/INDEX.md (agent reads this)", color: "#60a5fa" },
+              { tags: "#persistent, #hot, #bug, #workflow", dest: "Memory — MEMORY/INDEX.md (agent reads this)", color: "#60a5fa" },
             ].map((row) => (
               <div key={row.tags} style={{ borderBottom: "1px solid #141414", padding: "12px 16px", display: "grid", gridTemplateColumns: "240px 1fr", gap: 16 }}>
                 <code className="font-mono" style={{ color: row.color, fontSize: 12 }}>{row.tags}</code>
@@ -206,38 +206,38 @@ specflow sync --pin "Projects/App"    # pin a vault folder to always pull`}</Cod
           </div>
 
           <H3>Write-back (bidirectional)</H3>
-          <P>After sync, specflow writes back to <code style={{color:"#888"}}>{'<vault>'}/specflow/</code>:</P>
+          <P>After sync, persistent writes back to <code style={{color:"#888"}}>{'<vault>'}/persistent/</code>:</P>
           <ul style={{ paddingLeft: 20, marginBottom: 16 }}>
             {[
-              "Archived specs → specflow/specs/<slug>.md (tagged #specflow #archived)",
-              "SEED.md snapshot → specflow/SEED.md (tagged #specflow #seed)",
-              "Evolved skills → specflow/skills/<id>.md (tagged #specflow #skill)",
+              "Archived specs → persistent/specs/<slug>.md (tagged #persistent #archived)",
+              "SEED.md snapshot → persistent/SEED.md (tagged #persistent #seed)",
+              "Evolved skills → persistent/skills/<id>.md (tagged #persistent #skill)",
             ].map(item => (
               <li key={item} className="font-mono mb-1" style={{ color: "#555", fontSize: 12.5 }}><G>→</G> {item}</li>
             ))}
           </ul>
 
           {/* ── analyze ── */}
-          <H2 id="analyze">specflow analyze</H2>
+          <H2 id="analyze">persistent analyze</H2>
           <P>AI-analyze your actual code and generate project-specific skill files. Requires Anthropic API key.</P>
-          <Code>{`specflow analyze                        # analyze all detected skills
-specflow analyze --key sk-ant-...      # pass API key directly
-specflow analyze --force               # regenerate even if files exist
-specflow analyze --only stripe/node    # target specific skills`}</Code>
+          <Code>{`persistent analyze                        # analyze all detected skills
+persistent analyze --key sk-ant-...      # pass API key directly
+persistent analyze --force               # regenerate even if files exist
+persistent analyze --only stripe/node    # target specific skills`}</Code>
           <P>Uses <code style={{color:"#888"}}>claude-haiku-4-5</code> — fast and cheap. Set <code style={{color:"#888"}}>ANTHROPIC_API_KEY</code> in env to avoid passing --key every time.</P>
 
           {/* ── slash commands ── */}
           <H2 id="slash-commands">Slash commands</H2>
-          <P>For <G>Claude Code</G> and <G>OpenCode</G>, specflow init creates native slash commands. Type <code style={{color:"#888"}}>/specflow-</code> in the AI chat to see them.</P>
+          <P>For <G>Claude Code</G> and <G>OpenCode</G>, persistent init creates native slash commands. Type <code style={{color:"#888"}}>/persistent-</code> in the AI chat to see them.</P>
           <P>These are <A>AI-native</A> — they instruct the AI agent itself to analyze your code and generate context, using the three-tool trinity (OpenSpec + skills.sh + Obsidian).</P>
 
           <div style={{ border: "1px solid #141414", borderRadius: 6, overflow: "hidden", marginBottom: 20 }}>
             {[
-              { cmd: "/specflow-init", desc: "AI scans codebase → writes to agent's context file (CLAUDE.md, etc.) + SPECS/SEED.md + .skills/" },
-              { cmd: "/specflow-spec", desc: "AI reads codebase + SEED.md → generates structured specs via OpenSpec lifecycle" },
-              { cmd: "/specflow-skill", desc: "AI analyzes code patterns → creates/evolves project-specific skills via skills.sh" },
-              { cmd: "/specflow-sync", desc: "AI reads Obsidian notes → routes by tag (#spec → OpenSpec, #pattern → skills.sh, #bug → memory)" },
-              { cmd: "/specflow-analyze", desc: "AI deep-dives codebase → generates detailed skill files with project-specific patterns" },
+              { cmd: "/persistent-init", desc: "AI scans codebase → writes to agent's context file (CLAUDE.md, etc.) + SPECS/SEED.md + .skills/" },
+              { cmd: "/persistent-spec", desc: "AI reads codebase + SEED.md → generates structured specs via OpenSpec lifecycle" },
+              { cmd: "/persistent-skill", desc: "AI analyzes code patterns → creates/evolves project-specific skills via skills.sh" },
+              { cmd: "/persistent-sync", desc: "AI reads Obsidian notes → routes by tag (#spec → OpenSpec, #pattern → skills.sh, #bug → memory)" },
+              { cmd: "/persistent-analyze", desc: "AI deep-dives codebase → generates detailed skill files with project-specific patterns" },
             ].map(({ cmd, desc }) => (
               <div key={cmd} style={{ borderBottom: "1px solid #141414", padding: "12px 16px", display: "grid", gridTemplateColumns: "200px 1fr", gap: 16 }}>
                 <code className="font-mono font-semibold" style={{ color: "#00e87a", fontSize: 12 }}>{cmd}</code>
@@ -249,8 +249,8 @@ specflow analyze --only stripe/node    # target specific skills`}</Code>
           <P>Supported agents: Claude Code (<code style={{color:"#888"}}>.claude/commands/</code>) and OpenCode (<code style={{color:"#888"}}>.opencode/commands/</code>). Other agents use CLI commands directly.</P>
 
           {/* ── config ── */}
-          <H2 id="config">Config file (.specflow.json)</H2>
-          <P>Auto-created by <code style={{color:"#888"}}>specflow init</code>. Persists state between commands.</P>
+          <H2 id="config">Config file (.persistent.json)</H2>
+          <P>Auto-created by <code style={{color:"#888"}}>persistent init</code>. Persists state between commands.</P>
           <Code lang="json">{`{
   "agent": "claude-code",
   "agents": ["claude-code", "cursor"],
@@ -265,22 +265,22 @@ specflow analyze --only stripe/node    # target specific skills`}</Code>
 
           {/* ── gitignore ── */}
           <H2 id="gitignore">.gitignore</H2>
-          <Code>{`# specflow — do not commit these
+          <Code>{`# persistent — do not commit these
 MEMORY/INDEX.md        # personal vault content
-.specflow.json         # contains local paths (vault, agentRoot)
+.persistent.json         # contains local paths (vault, agentRoot)
 .skills/               # downloaded skills — regenerated on demand
 
 # commit these
 # CLAUDE.md (or agents.md, .cursor/rules/, etc.)
 # SPECS/
-# .specflow/generation-spec.json`}</Code>
+# .persistent/generation-spec.json`}</Code>
 
           {/* ── plugin ── */}
           <H2 id="plugin">Plugin API</H2>
-          <P>Use specflow as a library in your own CLI tool or editor extension.</P>
-          <Code lang="typescript">{`import { createSpecflowPlugin } from "@kousthubha/specflow/plugin";
+          <P>Use persistent as a library in your own CLI tool or editor extension.</P>
+          <Code lang="typescript">{`import { createPersistentPlugin } from "@kousthubha/persistent/plugin";
 
-const sf = await createSpecflowPlugin("/path/to/project");
+const sf = await createPersistentPlugin("/path/to/project");
 
 // Optional: register your CLI's native AI for spec-driven generation
 await sf.registerCliAI(cliAIInstance);
@@ -322,14 +322,14 @@ const skillNotes = await sf.getSkillNotes("/vault");  // #pattern, #skill`}</Cod
           {/* ── obsidian setup ── */}
           <H2 id="obsidian">Obsidian setup</H2>
           <H3>Auto-discover vaults</H3>
-          <P>specflow reads Obsidian's own config JSON to find your vaults:</P>
-          <Code>{`specflow sync --discover
+          <P>persistent reads Obsidian's own config JSON to find your vaults:</P>
+          <Code>{`persistent sync --discover
 # Found vaults:
 #   MyVault     /Users/sky/Documents/MyVault
 #   WorkNotes   /Users/sky/obsidian/WorkNotes`}</Code>
 
           <H3>Connect manually</H3>
-          <Code>{`specflow init --obsidian "/absolute/path/to/vault"
+          <Code>{`persistent init --obsidian "/absolute/path/to/vault"
 # vault root = folder containing .obsidian/ directory`}</Code>
 
           <H3>Vault path by OS</H3>
@@ -348,19 +348,19 @@ const skillNotes = await sf.getSkillNotes("/vault");  // #pattern, #skill`}</Cod
 
           <H3>Tagging notes</H3>
           <P>Inline tag (anywhere in note body):</P>
-          <Code lang="markdown">{`#specflow
+          <Code lang="markdown">{`#persistent
 #decision  your decision here`}</Code>
           <P>Front-matter tags:</P>
           <Code lang="yaml">{`---
-tags: [specflow, decision, architecture]
+tags: [persistent, decision, architecture]
 ---`}</Code>
 
           {/* ── generation-spec ── */}
           <H2 id="generation-spec">generation-spec.json</H2>
-          <P>The stable source of truth for all context generation. Lives at <code style={{color:"#888"}}>.specflow/generation-spec.json</code> in your project — commit it.</P>
+          <P>The stable source of truth for all context generation. Lives at <code style={{color:"#888"}}>.persistent/generation-spec.json</code> in your project — commit it.</P>
           <P>It defines: file schemas (required sections, token limits), validation rules, AI generation prompts, integration settings for OpenSpec/skills/Obsidian. Follows semantic versioning — switching AI models or CLI tools doesn't break your specs because the spec is the source of truth, not the model.</P>
           <Code>{`# Initialize generation-spec in your project
-specflow init  # creates .specflow/generation-spec.json automatically`}</Code>
+persistent init  # creates .persistent/generation-spec.json automatically`}</Code>
         </main>
       </div>
     </>

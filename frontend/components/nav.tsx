@@ -28,7 +28,7 @@ export default function Nav() {
         <a href="#" className="flex items-center gap-2 group shrink-0">
           <span className="text-accent text-sm font-mono font-bold">&gt;_</span>
           <span className="text-text font-mono font-semibold text-xs sm:text-sm tracking-wide group-hover:text-accent transition-colors">
-            specflow
+            persistent
           </span>
         </a>
 

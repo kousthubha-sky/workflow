@@ -6,7 +6,7 @@ export default function Footer() {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard?.writeText("npx @kousthubha/specflow init");
+    navigator.clipboard?.writeText("npx @kousthubha/persistent init");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -24,7 +24,7 @@ export default function Footer() {
           <div className="flex justify-center px-2">
             <div className="cmd-box group max-w-md w-full" onClick={handleCopy}>
               <span className="text-muted text-xs sm:text-sm shrink-0">$</span>
-              <span className="text-text text-[10px] sm:text-xs md:text-sm font-mono flex-1 truncate">npx @kousthubha/specflow init</span>
+              <span className="text-text text-[10px] sm:text-xs md:text-sm font-mono flex-1 truncate">npx @kousthubha/persistent init</span>
               {copied ? (
                 <Check size={14} className="text-lime shrink-0" />
               ) : (
@@ -39,7 +39,7 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <span className="text-accent text-xs sm:text-sm font-mono font-bold">&gt;_</span>
-            <span className="text-text font-mono font-semibold text-xs sm:text-sm tracking-wide">specflow</span>
+            <span className="text-text font-mono font-semibold text-xs sm:text-sm tracking-wide">persistent</span>
             <span className="text-muted font-mono text-[9px] sm:text-[10px] tracking-wider hidden sm:block">V0.2.0 · MIT · OPEN SOURCE</span>
           </div>
 

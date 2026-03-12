@@ -6,7 +6,7 @@ const steps = [
     day: "Day 0",
     title: "Bootstrap once",
     color: "#3b82f6",
-    cmd: "specflow init",
+    cmd: "persistent init",
     what: [
       "Reads your package.json → detects stack automatically",
       "Multi-select prompt: pick which agents you use",
@@ -16,12 +16,12 @@ const steps = [
       "Writes SPECS/SEED.md — fill in your architecture decisions",
     ],
     terminal: [
-      { prompt: "$", text: "specflow init", color: "#ececec" },
+      { prompt: "$", text: "persistent init", color: "#ececec" },
       { prompt: "✓", text: "Stack: nextjs, prisma, clerk, stripe, shadcn", color: "#bef264" },
       { prompt: "?", text: "Agents: ◉ Claude Code  ◉ Cursor  ◯ Copilot", color: "#60a5fa" },
       { prompt: "✓", text: "10 skills installed → .skills/", color: "#bef264" },
       { prompt: "✓", text: "CLAUDE.md patched", color: "#bef264" },
-      { prompt: "✓", text: ".cursor/rules/specflow.mdc patched", color: "#bef264" },
+      { prompt: "✓", text: ".cursor/rules/persistent.mdc patched", color: "#bef264" },
       { prompt: "✓", text: "SPECS/SEED.md ready — fill in your patterns", color: "#fbbf24" },
     ],
   },
@@ -30,7 +30,7 @@ const steps = [
     day: "Before every feature",
     title: "Spec first, code second",
     color: "#fbbf24",
-    cmd: 'specflow spec "add feature"',
+    cmd: 'persistent spec "add feature"',
     what: [
       "Creates SPECS/active/<slug>/ with three files",
       "proposal.md — problem, solution, scope, open questions",
@@ -40,13 +40,13 @@ const steps = [
       "No more re-explaining the feature every session",
     ],
     terminal: [
-      { prompt: "$", text: 'specflow spec "add razorpay payments"', color: "#ececec" },
+      { prompt: "$", text: 'persistent spec "add razorpay payments"', color: "#ececec" },
       { prompt: "✓", text: "Proposing: add-razorpay-payments", color: "#bef264" },
       { prompt: "→", text: "SPECS/active/add-razorpay-payments/proposal.md", color: "#888" },
       { prompt: "→", text: "SPECS/active/add-razorpay-payments/design.md", color: "#888" },
       { prompt: "→", text: "SPECS/active/add-razorpay-payments/tasks.md", color: "#888" },
       { prompt: "", text: "", color: "" },
-      { prompt: "→", text: "Validate: specflow spec --validate add-razorpay-payments", color: "#555" },
+      { prompt: "→", text: "Validate: persistent spec --validate add-razorpay-payments", color: "#555" },
     ],
   },
   {
@@ -54,7 +54,7 @@ const steps = [
     day: "During the session",
     title: "Your notes become context",
     color: "#a78bfa",
-    cmd: "specflow sync",
+    cmd: "persistent sync",
     what: [
       "Jot decisions in Obsidian while you build",
       "#decision → feeds SEED.md, shapes future specs",
@@ -64,7 +64,7 @@ const steps = [
       "Agent reads MEMORY/INDEX.md at session start",
     ],
     terminal: [
-      { prompt: "$", text: "specflow sync", color: "#ececec" },
+      { prompt: "$", text: "persistent sync", color: "#ececec" },
       { prompt: "↓", text: "Pulling vault → MEMORY/INDEX.md", color: "#a78bfa" },
       { prompt: "→", text: "3 #decision notes → OpenSpec SEED", color: "#3b82f6" },
       { prompt: "→", text: "2 #pattern notes → skills evolution", color: "#fbbf24" },
@@ -78,7 +78,7 @@ const steps = [
     day: "Feature shipped",
     title: "Archive and evolve",
     color: "#60a5fa",
-    cmd: "specflow spec --archive add-razorpay-payments",
+    cmd: "persistent spec --archive add-razorpay-payments",
     what: [
       "Moves spec to SPECS/archive/ with timestamp",
       "Extracts patterns from design.md automatically",
@@ -88,7 +88,7 @@ const steps = [
       "SEED.md evolves from real shipped work, not docs",
     ],
     terminal: [
-      { prompt: "$", text: "specflow spec --archive add-razorpay-payments", color: "#ececec" },
+      { prompt: "$", text: "persistent spec --archive add-razorpay-payments", color: "#ececec" },
       { prompt: "✓", text: "Archived → SPECS/archive/2026-03-11-add-razorpay-payments/", color: "#bef264" },
       { prompt: "✓", text: "Patterns extracted from design.md", color: "#bef264" },
       { prompt: "✓", text: "SEED.md evolved (+3 patterns)", color: "#3b82f6" },
@@ -104,7 +104,7 @@ export default function Workflow() {
     <section id="workflow" className="border-t border-border">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
         <div className="section-label mb-8">THE WORKFLOW</div>
-        <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-3">How a dev uses specflow.</h2>
+        <h2 className="text-2xl md:text-3xl font-mono font-bold text-text mb-3">How a dev uses persistent.</h2>
         <p className="text-muted-2 font-mono text-sm mb-12 max-w-lg">
           Four moments in your development lifecycle. Each one builds on the last.
           SEED.md gets smarter with every feature you ship.

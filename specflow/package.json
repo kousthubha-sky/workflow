@@ -1,10 +1,10 @@
 {
-  "name": "@kousthubha/specflow",
+  "name": "@kousthubha/persistent",
   "version": "0.2.4",
   "description": "Universal AI workflow bootstrap — one command, any stack, any agent.",
   "type": "module",
   "bin": {
-    "specflow": "./bin/specflow.js"
+    "persistent": "./bin/persistent.js"
   },
   "files": [
     "bin/",
@@ -19,7 +19,7 @@
   ],
   "exports": {
     ".": {
-      "import": "./bin/specflow.js"
+      "import": "./bin/persistent.js"
     },
     "./plugin": {
       "import": "./plugin.mjs"
@@ -56,7 +56,7 @@
     "developer-tools",
     "cli",
     "sdd",
-    "specflow",
+    "persistent",
     "plugin",
     "ai-context-plugin"
   ],

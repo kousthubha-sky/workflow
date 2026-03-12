@@ -3,7 +3,7 @@
  * Bidirectional Obsidian integration — the context layer binding specs + skills.
  *
  * Obsidian is the knowledge graph that connects everything:
- *   → Notes tagged #specflow → pulled into MEMORY/INDEX.md
+ *   → Notes tagged #persistent → pulled into MEMORY/INDEX.md
  *   → Notes tagged #spec / #decision → fed into OpenSpec proposals + SEED.md
  *   → Notes tagged #pattern / #skill → fed into skills creation + evolution
  *   ← Completed specs → written back as Obsidian notes
@@ -26,7 +26,7 @@ const MEMORY_INDEX = "MEMORY/INDEX.md";
 const OBSIDIAN_CONFIG_DIR = ".obsidian";
 
 // How many notes to pull into INDEX.md
-const MAX_TAGGED = 10;   // all #specflow notes (no cap — they're explicit)
+const MAX_TAGGED = 10;   // all #persistent notes (no cap — they're explicit)
 const MAX_RECENT = 5;    // recent notes after tagged ones
 const PREVIEW_LINES = 25; // lines per note preview
 
@@ -39,7 +39,7 @@ const TAG_ROUTES = {
   skill:       "skills",      // → Skill creation
   "best-practice": "skills",  // → Skill patterns
   convention:  "skills",      // → Skill conventions
-  specflow:   "memory",      // → MEMORY/INDEX.md
+  persistent:  "memory",      // → MEMORY/INDEX.md
   hot:         "memory",      // → MEMORY/INDEX.md
   bug:         "memory",      // → MEMORY/INDEX.md
   workflow:    "memory",      // → MEMORY/INDEX.md
@@ -128,18 +128,18 @@ function parseFrontMatter(content) {
 }
 
 /**
- * Check if a note has the #specflow tag — either inline or in front-matter.
+ * Check if a note has the #persistent tag — either inline or in front-matter.
  * @param {string} content
  * @returns {boolean}
  */
-function isSpecflowTagged(content) {
+function isPersistentTagged(content) {
   // Inline tag anywhere in file
-  if (content.includes("#specflow") || content.includes("#hot")) return true;
+  if (content.includes("#persistent") || content.includes("#hot")) return true;
 
   // Front-matter tags array
   const fm = parseFrontMatter(content);
   const tags = Array.isArray(fm.tags) ? fm.tags : [];
-  return tags.some((t) => t === "specflow" || t === "hot");
+  return tags.some((t) => t === "persistent" || t === "hot");
 }
 
 // ─── Note Reader ────────────────────────────────────────────────────────────
@@ -182,7 +182,7 @@ export async function syncObsidian(vaultPath, cwd, opts = {}) {
     await fs.access(vaultPath);
   } catch {
     spinner.fail(`Vault not found: ${chalk.yellow(vaultPath)}`);
-    spinner.fail("Run `specflow init --obsidian <path>` with the correct vault path.");
+    spinner.fail("Run `persistent init --obsidian <path>` with the correct vault path.");
     return false;
   }
 
@@ -245,7 +245,7 @@ export async function syncObsidian(vaultPath, cwd, opts = {}) {
   for (const note of notes) {
     const rel = path.relative(vaultPath, note.file).replace(/\\/g, "/");
 
-    if (isSpecflowTagged(note.content)) {
+    if (isPersistentTagged(note.content)) {
       tagged.push({ ...note, rel });
     } else if (pinnedFolders.some((folder) => rel.startsWith(folder))) {
       pinned.push({ ...note, rel });
@@ -269,11 +269,11 @@ export async function syncObsidian(vaultPath, cwd, opts = {}) {
 path:${vaultPath}
 last-sync:${now}
 notes-total:${allFiles.length}
-tagged:#specflow=${tagged.length} pinned=${pinned.length}
+tagged:#persistent=${tagged.length} pinned=${pinned.length}
 
 ## how-to-use
-- Tag any note \`#specflow\` → always pulled into this index
-- Add folders to pinnedFolders in .specflow.json → always pulled
+- Tag any note \`#persistent\` → always pulled into this index
+- Add folders to pinnedFolders in .persistent.json → always pulled
 - All other notes: top ${MAX_RECENT} most recently modified
 
 ## hot-notes
@@ -283,7 +283,7 @@ tagged:#specflow=${tagged.length} pinned=${pinned.length}
     const fm = parseFrontMatter(note.content);
     const preview = buildPreview(note.content);
     const source = tagged.find((t) => t.file === note.file)
-      ? "tagged:#specflow"
+      ? "tagged:#persistent"
       : pinned.find((p) => p.file === note.file)
       ? "pinned"
       : "recent";
@@ -301,8 +301,8 @@ ${preview}
 
   output += `
 ## cmds
-\`specflow sync\`                          → refresh this file from vault
-\`specflow sync --pin "Projects/MyApp"\`  → add a folder to always-pull list
+\`persistent sync\`                          → refresh this file from vault
+\`persistent sync --pin "Projects/MyApp"\`  → add a folder to always-pull list
 `;
 
   // Write output
@@ -405,7 +405,7 @@ export async function getSkillNotes(vaultPath) {
 
 /**
  * Write a completed spec summary back to Obsidian vault.
- * Creates a note in the vault's specflow folder.
+ * Creates a note in the vault's persistent folder.
  *
  * @param {string} vaultPath
  * @param {Object} specData
@@ -415,12 +415,12 @@ export async function getSkillNotes(vaultPath) {
  * @param {string} specData.archiveDate - ISO date
  */
 export async function writeSpecToVault(vaultPath, specData) {
-  const specflowDir = path.join(vaultPath, "specflow", "specs");
-  await fs.mkdir(specflowDir, { recursive: true });
+  const persistentDir = path.join(vaultPath, "persistent", "specs");
+  await fs.mkdir(persistentDir, { recursive: true });
 
-  const notePath = path.join(specflowDir, `${specData.slug}.md`);
+  const notePath = path.join(persistentDir, `${specData.slug}.md`);
   const content = `---
-tags: [specflow, spec, archived]
+tags: [persistent, spec, archived]
 date: ${specData.archiveDate || new Date().toISOString().slice(0, 10)}
 status: archived
 ---
@@ -437,7 +437,7 @@ ${extractDecisions(specData.design)}
 ${extractPatterns(specData.design)}
 
 ---
-> Auto-synced from specflow spec archive
+> Auto-synced from persistent spec archive
 `;
 
   await fs.writeFile(notePath, content, "utf8");
@@ -453,13 +453,13 @@ ${extractPatterns(specData.design)}
  * @param {string[]} skillData.newPatterns - Newly added patterns
  */
 export async function writeSkillToVault(vaultPath, skillData) {
-  const specflowDir = path.join(vaultPath, "specflow", "skills");
-  await fs.mkdir(specflowDir, { recursive: true });
+  const persistentDir = path.join(vaultPath, "persistent", "skills");
+  await fs.mkdir(persistentDir, { recursive: true });
 
   const safeName = skillData.id.replace("/", "-");
-  const notePath = path.join(specflowDir, `${safeName}.md`);
+  const notePath = path.join(persistentDir, `${safeName}.md`);
   const content = `---
-tags: [specflow, skill, pattern]
+tags: [persistent, skill, pattern]
 date: ${new Date().toISOString().slice(0, 10)}
 skill-id: ${skillData.id}
 ---
@@ -475,7 +475,7 @@ ${
 }
 
 ---
-> Auto-synced from specflow skill
+> Auto-synced from persistent skill
 `;
 
   await fs.writeFile(notePath, content, "utf8");
@@ -488,12 +488,12 @@ ${
  * @param {string} seedContent - Current SEED.md content
  */
 export async function writeSeedToVault(vaultPath, seedContent) {
-  const specflowDir = path.join(vaultPath, "specflow");
-  await fs.mkdir(specflowDir, { recursive: true });
+  const persistentDir = path.join(vaultPath, "persistent");
+  await fs.mkdir(persistentDir, { recursive: true });
 
-  const notePath = path.join(specflowDir, "SEED.md");
+  const notePath = path.join(persistentDir, "SEED.md");
   const content = `---
-tags: [specflow, seed, architecture]
+tags: [persistent, seed, architecture]
 date: ${new Date().toISOString().slice(0, 10)}
 ---
 

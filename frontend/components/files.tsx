@@ -6,7 +6,7 @@ const files = [
     desc: "Context-dense brief written directly into the agent's own file. The AI reads this at session start. Commit this.",
     commit: true,
     lines: [
-      { text: "> specflow-context", c: "#3b82f6" },
+      { text: "> persistent-context", c: "#3b82f6" },
       { text: "> stack: nextjs|prisma|clerk|stripe|shadcn", c: "#3b82f699" },
       { text: "> agents: [claude-code,cursor]", c: "#3b82f699" },
       { text: "> skills: [vercel/nextjs,prisma/best-practices,stripe/node]", c: "#3b82f699" },
@@ -50,19 +50,19 @@ const files = [
     path: "MEMORY/INDEX.md",
     label: "HOT NOTES FROM OBSIDIAN",
     color: "#a78bfa",
-    desc: "Top notes from your Obsidian vault — tagged #specflow, #hot, #bug. Re-synced on demand. Gitignore this.",
+    desc: "Top notes from your Obsidian vault — tagged #persistent, #hot, #bug. Re-synced on demand. Gitignore this.",
     commit: false,
     lines: [
       { text: "# memory", c: "#ececec" },
       { text: "## vault", c: "#ececec" },
       { text: "path:/Users/sky/obsidian/OneRouter", c: "#a78bfa99" },
       { text: "last-sync:2026-03-11T09:23:00Z", c: "#a78bfa99" },
-      { text: "tagged:#specflow=3 pinned=2", c: "#a78bfa99" },
+      { text: "tagged:#persistent=3 pinned=2", c: "#a78bfa99" },
       { text: "", c: "" },
       { text: "## hot-notes", c: "#ececec" },
       { text: "", c: "" },
       { text: "### Projects/OneRouter/Architecture.md", c: "#a78bfa" },
-      { text: "> source:tagged:#specflow · modified:2026-03-10", c: "#888" },
+      { text: "> source:tagged:#persistent · modified:2026-03-10", c: "#888" },
       { text: "Unified SDK over Stripe + Razorpay + PayPal", c: "#b0b0b0" },
       { text: "Provider selected at runtime by currency", c: "#b0b0b0" },
     ],
@@ -76,7 +76,7 @@ export default function Files() {
         <div className="section-label mb-6 sm:mb-8">THE FILES</div>
         <h2 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-text mb-3">Three files. Full context.</h2>
         <p className="text-muted-2 font-mono text-xs sm:text-sm mb-8 sm:mb-12 max-w-lg">
-          specflow writes these to your project. Your agent reads them. Two go in git. One stays local.
+          persistent writes these to your project. Your agent reads them. Two go in git. One stays local.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-border">
@@ -114,7 +114,7 @@ export default function Files() {
             <div>
               <div className="text-muted text-xs mb-2"># do not commit</div>
               <div><span className="text-[#f87171]">MEMORY/INDEX.md</span><span className="text-muted">   # personal vault content</span></div>
-              <div><span className="text-[#f87171]">.specflow.json</span><span className="text-muted">    # contains local paths</span></div>
+              <div><span className="text-[#f87171]">.persistent.json</span><span className="text-muted">    # contains local paths</span></div>
               <div><span className="text-[#f87171]">.skills/</span><span className="text-muted">           # regenerated on demand</span></div>
             </div>
             <div>
@@ -123,7 +123,7 @@ export default function Files() {
               <div><span className="text-lime">SPECS/SEED.md</span></div>
               <div><span className="text-lime">SPECS/active/</span></div>
               <div><span className="text-lime">SPECS/archive/</span></div>
-              <div><span className="text-lime">.specflow/generation-spec.json</span></div>
+              <div><span className="text-lime">.persistent/generation-spec.json</span></div>
             </div>
           </div>
         </div>

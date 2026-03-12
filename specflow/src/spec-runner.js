@@ -3,11 +3,11 @@
  * OpenSpec SDD cycle — delegates to openspec-integration.js for full lifecycle.
  *
  * Cycle:
- *   specflow spec "add dark mode"      → proposeSpec() via openspec CLI or local
- *   specflow spec --validate <slug>     → validateSpec()
- *   specflow spec --archive <slug>      → archiveSpecWithEvolution() + SEED update
- *   specflow spec --list                → listActiveSpecs()
- *   specflow spec --seed                → regenerateSeed()
+ *   persistent spec "add dark mode"      → proposeSpec() via openspec CLI or local
+ *   persistent spec --validate <slug>     → validateSpec()
+ *   persistent spec --archive <slug>      → archiveSpecWithEvolution() + SEED update
+ *   persistent spec --list                → listActiveSpecs()
+ *   persistent spec --seed                → regenerateSeed()
  */
 
 import fs from "fs/promises";
@@ -44,8 +44,8 @@ export async function runSpec(feature, opts = {}) {
   });
 
   if (result.slug) {
-    console.log(chalk.dim(`  Validate: specflow spec --validate ${result.slug}`));
-    console.log(chalk.dim(`  Archive:  specflow spec --archive ${result.slug}`));
+    console.log(chalk.dim(`  Validate: persistent spec --validate ${result.slug}`));
+    console.log(chalk.dim(`  Archive:  persistent spec --archive ${result.slug}`));
   }
 }
 
@@ -84,7 +84,7 @@ export async function listSpecs() {
   const specs = await listActiveSpecs(cwd);
 
   if (specs.length === 0) {
-    console.log(chalk.dim("No active specs. Create one: specflow spec \"feature name\""));
+    console.log(chalk.dim("No active specs. Create one: persistent spec \"feature name\""));
     return;
   }
 

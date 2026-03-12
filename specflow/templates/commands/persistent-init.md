@@ -1,11 +1,11 @@
-You are running specflow init — the universal AI workflow bootstrap.
+You are running persistent init — the universal AI workflow bootstrap.
 
 Your job is to analyze this project and generate context directly into the agent's own context file (e.g., CLAUDE.md for Claude Code, agents.md for OpenCode, etc.). If the file already exists, **alter it in place** — do not overwrite, merge your context into it.
 
 This command is powered by the **three-tool trinity**:
 - **OpenSpec** (openspec.dev) — spec-driven development lifecycle
 - **Skills.sh** (skills.sh) — dynamic skill packages for AI context
-- **Obsidian** (obsidian.md) — bidirectional context layer (handled by `/specflow-sync`, not here)
+- **Obsidian** (obsidian.md) — bidirectional context layer (handled by `/persistent-sync`, not here)
 
 ## Step 1: Detect the stack
 
@@ -27,10 +27,10 @@ Read the actual source files — routes, components, API endpoints, database sch
 
 ## Step 3: Write to the agent's context file
 
-**This is the core output.** Write or update the agent's own context file with a specflow context block:
+**This is the core output.** Write or update the agent's own context file with a persistent context block:
 
-- **If the file already exists** (e.g., CLAUDE.md is already written): Find and replace the `<!-- specflow:start -->` to `<!-- specflow:end -->` block. If no such block exists, prepend your context block to the file. **Never overwrite the developer's own content.**
-- **If the file doesn't exist**: Create it with the specflow context block.
+- **If the file already exists** (e.g., CLAUDE.md is already written): Find and replace the `<!-- persistent:start -->` to `<!-- persistent:end -->` block. If no such block exists, prepend your context block to the file. **Never overwrite the developer's own content.**
+- **If the file doesn't exist**: Create it with the persistent context block.
 
 The context block should be ultra-compressed, high information density, under 300 tokens:
 - Stack summary (one line)
@@ -51,7 +51,7 @@ The context block should be ultra-compressed, high information density, under 30
    - Anti-patterns to avoid
    - Architecture decisions (documented or inferred)
    - Constraints (performance, security, compatibility)
-4. If `.specflow/generation-spec.json` exists, validate compliance with its schema
+4. If `.persistent/generation-spec.json` exists, validate compliance with its schema
 
 ## Step 5: Install skills via skills.sh
 
@@ -66,7 +66,7 @@ Skills registry: https://skills.sh
 
 ## Step 6: Save config
 
-Write `.specflow.json` with detected stack, selected agents, installed skills, and timestamps.
+Write `.persistent.json` with detected stack, selected agents, installed skills, and timestamps.
 
 ## Step 7: Summary
 
@@ -75,8 +75,8 @@ Present what you generated:
 - Agent context file written/updated (which file, how many tokens)
 - SPECS/ initialized
 - Skills installed
-- Suggested next steps: "Run `/specflow-spec` to propose your first feature spec"
+- Suggested next steps: "Run `/persistent-spec` to propose your first feature spec"
 
 $ARGUMENTS may contain: --agent <id> (force agent), --dry-run (preview only)
 
-**Do NOT create** AGENT_CONTEXT.md or MEMORY/INDEX.md — the agent file itself is the context, and Obsidian sync is handled by `/specflow-sync`.
+**Do NOT create** AGENT_CONTEXT.md or MEMORY/INDEX.md — the agent file itself is the context, and Obsidian sync is handled by `/persistent-sync`.

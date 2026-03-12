@@ -4,7 +4,7 @@
  * and generate skill files reflecting THIS project's real usage patterns.
  *
  * Optional feature — requires @anthropic-ai/sdk (optionalDependency).
- * Only imported when `specflow analyze` is run.
+ * Only imported when `persistent analyze` is run.
  */
 
 import fs from "fs/promises";
@@ -145,7 +145,7 @@ export async function analyzeAndGenerateSkills(skillIds, stackKeys, cwd, opts = 
     throw new Error(
       "@anthropic-ai/sdk not installed.\n" +
       "  Run: npm install @anthropic-ai/sdk\n" +
-      "  Then: specflow analyze"
+      "  Then: persistent analyze"
     );
   }
 
@@ -154,7 +154,7 @@ export async function analyzeAndGenerateSkills(skillIds, stackKeys, cwd, opts = 
     throw new Error(
       "ANTHROPIC_API_KEY not set.\n" +
       "  export ANTHROPIC_API_KEY=sk-ant-...\n" +
-      "  or: specflow analyze --key sk-ant-..."
+      "  or: persistent analyze --key sk-ant-..."
     );
   }
 

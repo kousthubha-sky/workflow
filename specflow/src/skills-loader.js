@@ -4,7 +4,7 @@
  *
  * Install strategy (in order):
  *   1. Try `npx skills add <pkg>` — uses skills.sh registry
- *   2. Fall back to builtin skill files bundled with specflow
+ *   2. Fall back to builtin skill files bundled with persistent
  *   3. If neither — write a minimal placeholder
  *
  * Enhanced with:
@@ -56,7 +56,7 @@ export async function installSkills(skillIds, cwd) {
 }
 
 /**
- * Install a single skill manually (specflow add-skill <id>).
+ * Install a single skill manually (persistent add-skill <id>).
  * Enhanced: tries registry → builtin → placeholder, updates context.
  * @param {string} skillId
  * @param {string} cwd

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Specflow is a universal AI workflow bootstrap tool that integrates three key systems:
+Persistent is a universal AI workflow bootstrap tool that integrates three key systems:
 - **OpenSpec** for structured specifications
 - **Skills.sh** for reusable skill packages
 - **Obsidian** as a bidirectional context layer
@@ -27,21 +27,21 @@ node test-detect.js
 ### CLI Usage
 ```bash
 # Initialize a new project
-specflow init [--agent <id>] [--obsidian <path>] [--dry-run]
+persistent init [--agent <id>] [--obsidian <path>] [--dry-run]
 
 # Add a specific skill
-specflow add-skill <skill-id>
+persistent add-skill <skill-id>
 
 # Search for skills
-specflow skill --search <query>
+persistent skill --search <query>
 
 # Sync with Obsidian vault
-specflow sync [--pin <folder>] [--discover]
+persistent sync [--pin <folder>] [--discover]
 
 # Manage specs
-specflow spec "feature name"              # Propose new spec
-specflow spec --validate <slug>          # Validate against SEED
-specflow spec --archive <slug>           # Archive + evolve SEED
+persistent spec "feature name"              # Propose new spec
+persistent spec --validate <slug>          # Validate against SEED
+persistent spec --archive <slug>           # Archive + evolve SEED
 ```
 
 ## Architecture
@@ -60,17 +60,17 @@ specflow spec --archive <slug>           # Archive + evolve SEED
 
 - **`config/skills-map.json`** - Maps dependencies to skill packages
 - **`config/agent-map.json`** - Maps agent types to their context file names
-- **`.specflow/generation-spec.json`** - Schema for all generated context files
+- **`.persistent/generation-spec.json`** - Schema for all generated context files
 
 ### Generated Files Structure
 
-When running `specflow init`, these files are created:
+When running `persistent init`, these files are created:
 
 1. **`CLAUDE.md`** - Ultra-compressed context block for AI agents (300 tokens max)
 2. **`SPECS/SEED.md`** - Architectural specification with patterns and constraints
 3. **`MEMORY/INDEX.md`** - Synced from Obsidian vault
 4. **`.skills/`** - Downloaded skill packages
-5. **`.specflow.json`** - Local configuration (not committed)
+5. **`.persistent.json`** - Local configuration (not committed)
 
 ## Stack Detection Logic
 
@@ -89,15 +89,15 @@ Skills are pulled from skills.sh registry based on detected stack. Each skill co
 - Validation rules
 
 Skills are stored in `.skills/` and can be:
-- Added manually: `specflow add-skill supabase/rls-patterns`
-- Searched: `specflow skill --search "react auth"`
-- Updated: `specflow skill --update`
+- Added manually: `persistent add-skill supabase/rls-patterns`
+- Searched: `persistent skill --search "react auth"`
+- Updated: `persistent skill --update`
 
 ## Agent Support
 
 Automatically detects and configures:
 - **Claude Code** → `CLAUDE.md`
-- **Cursor** → `.cursor/rules/specflow.mdc`
+- **Cursor** → `.cursor/rules/persistent.mdc`
 - **GitHub Copilot** → `.github/copilot-instructions.md`
 - **Windsurf** → `.windsurfrules`
 - **Aider** → `.aider/context.md`
@@ -109,16 +109,16 @@ Automatically detects and configures:
 Bidirectional sync routes notes by tags:
 - `#spec`, `#decision`, `#architecture` → OpenSpec specs
 - `#pattern`, `#skill`, `#best-practice` → Skills.sh
-- `#specflow`, `#hot`, `#bug`, `#workflow` → Memory layer
+- `#persistent`, `#hot`, `#bug`, `#workflow` → Memory layer
 
 ## Plugin API
 
 The tool can be used as a library:
 
 ```javascript
-import { createSpecflowPlugin } from "@kousthubha/specflow/plugin";
+import { createPersistentPlugin } from "@kousthubha/persistent/plugin";
 
-const sf = await createSpecflowPlugin("/path/to/project");
+const sf = await createPersistentPlugin("/path/to/project");
 await sf.detectAndSetup({
   agents: ["cursor", "claude-code"],
   obsidianPath: "/path/to/vault"
@@ -128,7 +128,7 @@ await sf.detectAndSetup({
 ## Important Notes
 
 - The tool generates context files that AI agents read before working
-- `.specflow.json` contains local paths and should not be committed
+- `.persistent.json` contains local paths and should not be committed
 - `MEMORY/INDEX.md` contains personal vault content and should not be committed
 - Skills are regenerated on demand from the registry
 - The generation spec ensures compatibility across AI models and CLI tools

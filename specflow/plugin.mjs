@@ -1,7 +1,7 @@
 /**
  * plugin.mjs
  * 
- * Specflow Plugin API
+ * Persistent Plugin API
  * Exported for CLI tools (Claude Code, Cursor, Windsurf, etc.) to import and use.
  * 
  * Three-tool trinity:
@@ -10,8 +10,8 @@
  *   - Obsidian — bidirectional context layer
  * 
  * Usage:
- *   import { createSpecflowPlugin } from 'specflow/plugin.mjs'
- *   const af = await createSpecflowPlugin(projectRoot)
+ *   import { createPersistentPlugin } from 'persistent/plugin.mjs'
+ *   const af = await createPersistentPlugin(projectRoot)
  *   await af.registerCliAI(cliAI)
  *   await af.detectAndSetup()
  */
@@ -50,13 +50,13 @@ import fs from "fs/promises";
 
 /**
  * Main plugin factory
- * Called by CLI tools to initialize specflow as a plugin
+ * Called by CLI tools to initialize persistent as a plugin
  */
-export async function createSpecflowPlugin(projectRoot = process.cwd()) {
-  return new SpecflowPlugin(projectRoot);
+export async function createPersistentPlugin(projectRoot = process.cwd()) {
+  return new PersistentPlugin(projectRoot);
 }
 
-class SpecflowPlugin {
+class PersistentPlugin {
   constructor(projectRoot) {
     this.projectRoot = projectRoot;
     this.config = null;
@@ -74,7 +74,7 @@ class SpecflowPlugin {
    * @param {Object} ai - CLI's native AI instance
    * Example (Claude Code):
    *   const codeAI = await claudeCode.getAI(); // Returns Claude instance
-   *   await specflow.registerCliAI(codeAI);
+   *   await persistent.registerCliAI(codeAI);
    */
   async registerCliAI(ai) {
     this.cliAI = ai;
@@ -82,8 +82,8 @@ class SpecflowPlugin {
   }
 
   /**
-   * Full detection + setup (analagous to `specflow init`)
-   * CLI tools call this to bootstrap specflow in a project
+   * Full detection + setup (analagous to `persistent init`)
+   * CLI tools call this to bootstrap persistent in a project
    * 
    * New: If cliAI is registered, uses spec-driven context generation
    */
@@ -256,32 +256,9 @@ class SpecflowPlugin {
    */
   getMetadata() {
     return {
-      name: "specflow",
+      name: "persistent",
       version: require("./package.json").version,
       description: "Universal AI workflow bootstrap",
-      supportedAgents: Object.entries(AGENTS).map(([id, agent]) => ({
-        id,
-        label: agent.label,
-        integrationFile: agent.integrationFile,
-      })),
-    };
-  }
-
-  /**
-   * List available skills for detected stack
-   */
-  async listSkills() {
-    if (!this.detectedStack) {
-      const { keys: stack } = await detectStack(this.projectRoot);
-      this.detectedStack = stack;
-    }
-
-    const skillIds = await resolveSkills(this.detectedStack);
-    const installed = await listInstalledSkills(this.projectRoot);
-    return { stack: this.detectedStack, skills: skillIds, installed };
-  }
-
-  // ─── OpenSpec Lifecycle ─────────────────────────────────────────────────
 
   /**
    * Propose a new spec for a feature
@@ -395,4 +372,4 @@ class SpecflowPlugin {
   }
 }
 
-export { SpecflowPlugin };
+export { PersistentPlugin };

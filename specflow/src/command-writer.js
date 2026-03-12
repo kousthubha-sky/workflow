@@ -2,13 +2,13 @@
  * command-writer.js
  * 
  * Writes slash command files to agent-specific directories so that
- * specflow features appear as native slash commands in AI CLI tools.
+ * persistent features appear as native slash commands in AI CLI tools.
  * 
  * Supported agents:
- *   - Claude Code → .claude/commands/specflow-*.md
- *   - OpenCode   → .opencode/commands/specflow-*.md
+ *   - Claude Code → .claude/commands/persistent-*.md
+ *   - OpenCode   → .opencode/commands/persistent-*.md
  * 
- * Commands are markdown files that the AI reads when a user types /specflow-*
+ * Commands are markdown files that the AI reads when a user types /persistent-*
  * in the agent's chat interface.
  */
 
@@ -26,13 +26,13 @@ const COMMAND_DIRS = {
   "opencode":    ".opencode/commands",
 };
 
-/** All specflow slash commands (filename without extension) */
+/** All persistent slash commands (filename without extension) */
 const COMMAND_NAMES = [
-  "specflow-init",
-  "specflow-spec",
-  "specflow-skill",
-  "specflow-sync",
-  "specflow-analyze",
+  "persistent-init",
+  "persistent-spec",
+  "persistent-skill",
+  "persistent-sync",
+  "persistent-analyze",
 ];
 
 /**
@@ -44,7 +44,7 @@ function getTemplatesDir() {
 }
 
 /**
- * Write all specflow slash commands for a given agent.
+ * Write all persistent slash commands for a given agent.
  * 
  * @param {string} agentId - The agent identifier (e.g., "claude-code", "opencode")
  * @param {string} projectRoot - Absolute path to the project root

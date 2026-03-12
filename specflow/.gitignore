@@ -1,9 +1,9 @@
 node_modules/
 package-lock.json
 
-# specflow output files (project-local, not part of the tool itself)
+# persistent output files (project-local, not part of the tool itself)
 MEMORY/INDEX.md
-.specflow.json
+.persistent.json
 .skills/
 
 docs/

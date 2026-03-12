@@ -2,11 +2,11 @@
  * agent-writer.js
  * Detects which AI agent is active in the project.
  * Writes or patches the agent's context file (CLAUDE.md, agents.md, etc.)
- * with an [specflow] block containing the context-dense summary.
+ * with an [persistent] block containing the context-dense summary.
  *
  * Design rules:
  *  - Never clobber existing agent file content
- *  - Idempotent: re-running replaces only the [specflow] block
+ *  - Idempotent: re-running replaces only the [persistent] block
  *  - Walks UP from cwd to find agent markers (monorepo-aware)
  *  - Supports all major agents — see AGENT_FILE_MAP
  */
@@ -20,15 +20,15 @@ export const AGENT_FILE_MAP = {
   "claude-code": "CLAUDE.md",
   "opencode":    "agents.md",
   "copilot":     ".github/copilot-instructions.md",
-  "cursor":      ".cursor/rules/specflow.mdc",
+  "cursor":      ".cursor/rules/persistent.mdc",
   "aider":       ".aider/context.md",
   "windsurf":    ".windsurfrules",
   "continue":    ".continue/context.md",
   "generic":     "AGENT_CONTEXT.md",
 };
 
-const BLOCK_START = "<!-- specflow:start -->";
-const BLOCK_END   = "<!-- specflow:end -->";
+const BLOCK_START = "<!-- persistent:start -->";
+const BLOCK_END   = "<!-- persistent:end -->";
 
 // Agent marker files — presence identifies the agent
 const AGENT_MARKERS = [
@@ -101,7 +101,7 @@ export async function detectAgentWithEnv(startDir) {
 }
 
 /**
- * Build the specflow context block — context-dense, low token.
+ * Build the persistent context block — context-dense, low token.
  */
 export function buildBlock(cfg) {
   const stack      = (cfg.stack   ?? []).join("|") || "unknown";
@@ -112,7 +112,7 @@ export function buildBlock(cfg) {
   const agents     = (cfg.agents  ?? [cfg.agent]).filter(Boolean).join(",");
 
   return `${BLOCK_START}
-# specflow-ctx
+# persistent-ctx
 > stack:${stack}
 > agents:[${agents}]
 > skills:[${skills}]
@@ -122,7 +122,7 @@ export function buildBlock(cfg) {
 ## constraints
 - follow SPECS/SEED.md patterns and anti-patterns
 - check MEMORY/INDEX.md before starting long tasks
-- new features: run \`specflow spec "<feature>"\` first
+- new features: run \`persistent spec "<feature>"\` first
 
 ## sdd-cycle
 propose → apply → archive (specs in SPECS/)
@@ -132,13 +132,13 @@ propose → apply → archive (specs in SPECS/)
 
 ## obsidian
 vault:${obsidian}
-sync: \`specflow sync\`
+sync: \`persistent sync\`
 ${BLOCK_END}`;
 }
 
 /**
  * Write or patch an agent's integration file.
- * Idempotent — replaces only the specflow block, preserves everything else.
+ * Idempotent — replaces only the persistent block, preserves everything else.
  */
 export async function patchAgentFile(agentId, agentRoot, cfg) {
   const relPath  = AGENT_FILE_MAP[agentId] ?? AGENT_FILE_MAP.generic;

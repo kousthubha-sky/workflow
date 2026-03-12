@@ -1,8 +1,8 @@
 {
-  "name": "specflow",
+  "name": "persistent",
   "version": "0.2.3",
-  "displayName": "Specflow",
-  "description": "Universal AI workflow bootstrap plugin",
+  "displayName": "Persistent",
+  "description": "Universal AI workflow bootstrap plugin with persistent context",
   "type": "ai-context-plugin",
   "main": "./plugin.mjs",
   "capabilities": [
@@ -27,23 +27,23 @@
   },
   "activation": {
     "onCommand": [
-      "specflow.init",
-      "specflow.detect",
-      "specflow.update",
-      "specflow.spec",
-      "specflow.skill",
-      "specflow.sync",
-      "specflow.analyze"
+      "persistent.init",
+      "persistent.detect",
+      "persistent.update",
+      "persistent.spec",
+      "persistent.skill",
+      "persistent.sync",
+      "persistent.analyze"
     ],
     "onFileChange": ["package.json", "pyproject.toml", "Cargo.toml", "go.mod"],
     "onStart": true
   },
   "slashCommands": {
-    "specflow-init":    "Bootstrap project with stack detection and context files",
-    "specflow-spec":    "OpenSpec lifecycle — propose, validate, archive specs",
-    "specflow-skill":   "Skills.sh lifecycle — search, install, create, evolve skills",
-    "specflow-sync":    "Bidirectional Obsidian vault sync",
-    "specflow-analyze": "AI code analysis for project-specific skill generation"
+    "persistent-init":    "Bootstrap project with stack detection and context files",
+    "persistent-spec":    "OpenSpec lifecycle — propose, validate, archive specs",
+    "persistent-skill":   "Skills.sh lifecycle — search, install, create, evolve skills",
+    "persistent-sync":    "Bidirectional Obsidian vault sync",
+    "persistent-analyze": "AI code analysis for project-specific skill generation"
   },
   "documentation": {
     "url": "https://github.com/kousthubha-sky/workflow#plugin-api",

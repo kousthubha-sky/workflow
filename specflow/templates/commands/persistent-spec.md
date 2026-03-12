@@ -1,4 +1,4 @@
-You are running specflow spec — the OpenSpec lifecycle manager.
+You are running persistent spec — the OpenSpec lifecycle manager.
 
 Your job is to create, validate, or archive structured feature specifications that persist across sessions. Use your own intelligence to write specs that are actually useful, not boilerplate.
 
@@ -6,7 +6,7 @@ This command integrates with **OpenSpec** (openspec.dev) — the spec-driven dev
 
 ## Determine intent from $ARGUMENTS
 
-### Proposing a new spec (e.g., `/specflow-spec add stripe payments`)
+### Proposing a new spec (e.g., `/persistent-spec add stripe payments`)
 
 1. **Try OpenSpec CLI first:** Run `npx openspec propose "<feature>"` — if it works, it creates a standards-compliant spec. Then enhance it with the steps below.
 

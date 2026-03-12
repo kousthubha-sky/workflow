@@ -1,11 +1,11 @@
 node_modules/
 .next/
-.specflow.json  
+.persistent.json  
 .skills/
 MEMORY/
 SPECS/
 CLAUDE.md
 agents.md
 AGENT_CONTEXT.md
-specflow-fronte
+persistent-context
 .claude

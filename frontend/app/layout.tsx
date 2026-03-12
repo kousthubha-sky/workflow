@@ -9,10 +9,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://spec-flow.dev"),
+  metadataBase: new URL("https://persistent.technology"),
   title: {
-    default: "specflow — Universal AI Workflow Bootstrap",
-    template: "%s | specflow",
+    default: "persistent — Universal AI Workflow Bootstrap with Persistent Context",
+    template: "%s | persistent",
   },
   description:
     "One command. Any stack. Any agent. Bootstrap your AI coding agent with persistent context. Powered by OpenSpec, Skills.sh, and Obsidian.",
@@ -29,9 +29,9 @@ export const metadata: Metadata = {
     "Windsurf",
     "GitHub Copilot",
   ],
-  authors: [{ name: "specflow" }],
-  creator: "specflow",
-  publisher: "specflow",
+  authors: [{ name: "persistent" }],
+  creator: "persistent",
+  publisher: "persistent",
   robots: {
     index: true,
     follow: true,
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "specflow — Universal AI Workflow Bootstrap",
+    title: "persistent — Universal AI Workflow Bootstrap with Persistent Context",
     description: "One command. Any stack. Any agent. Bootstrap your AI coding agent with persistent context.",
     creator: "@kousthubha",
     images: [
@@ -53,22 +53,22 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "specflow - Universal AI Workflow Bootstrap",
+        alt: "persistent - Universal AI Workflow Bootstrap with Persistent Context",
       },
     ],
   },
   openGraph: {
     type: "website",
-    url: "https://spec-flow.dev",
-    siteName: "specflow",
-    title: "specflow — Universal AI Workflow Bootstrap",
+    url: "https://persistent.technology",
+    siteName: "persistent",
+    title: "persistent — Universal AI Workflow Bootstrap with Persistent Context",
     description: "One command. Any stack. Any agent. Bootstrap your AI coding agent with persistent context.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "specflow - Universal AI Workflow Bootstrap",
+        alt: "persistent - Universal AI Workflow Bootstrap with Persistent Context",
       },
     ],
     locale: "en_US",

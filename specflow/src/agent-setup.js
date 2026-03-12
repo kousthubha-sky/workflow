@@ -4,10 +4,10 @@
  *
  * Each agent has:
  *   - how it reads context (file it watches)
- *   - what specflow writes to hook into it
+ *   - what persistent writes to hook into it
  *   - any extra steps needed (extensions, settings, etc.)
  *
- * specflow does NOT install extensions automatically —
+ * persistent does NOT install extensions automatically —
  * it writes the right files and tells the user exactly what to do.
  */
 
@@ -34,8 +34,8 @@ export const AGENTS = {
     postSetupSteps: [
       "Open Claude Code in this project — it reads CLAUDE.md automatically on every session",
       "No extension or plugin needed — CLAUDE.md is native to Claude Code",
-      "Type /specflow- to see all specflow slash commands in Claude Code chat",
-      "Tag notes #specflow in Obsidian, then run: specflow sync",
+      "Type /persistent- to see all persistent slash commands in Claude Code chat",
+      "Tag notes #persistent in Obsidian, then run: persistent sync",
     ],
   },
 
@@ -46,8 +46,8 @@ export const AGENTS = {
     setup:           setupOpenCode,
     postSetupSteps: [
       "OpenCode reads agents.md automatically — no extra config needed",
-      "Type /specflow- to see all specflow slash commands in OpenCode chat",
-      "Run: specflow update to re-sync after stack changes",
+      "Type /persistent- to see all persistent slash commands in OpenCode chat",
+      "Run: persistent update to re-sync after stack changes",
     ],
   },
 
@@ -66,7 +66,7 @@ export const AGENTS = {
 
   "cursor": {
     label:           "Cursor",
-    integrationFile: ".cursor/rules/specflow.mdc",
+    integrationFile: ".cursor/rules/persistent.mdc",
     detect:          [".cursor", ".cursor/rules"],
     setup:           setupCursor,
     postSetupSteps: [
@@ -183,7 +183,7 @@ async function setupCopilot(agentRoot, block) {
 }
 
 async function setupCursor(agentRoot, block) {
-  // .cursor/rules/specflow.mdc handled by agent-writer.js — nothing extra
+  // .cursor/rules/persistent.mdc handled by agent-writer.js — nothing extra
 }
 
 async function setupAider(agentRoot, block) {
@@ -194,7 +194,7 @@ async function setupAider(agentRoot, block) {
     // Already exists — don't overwrite, just note the manual step
   } catch {
     await fs.writeFile(confPath,
-      `# Aider configuration — managed by specflow\nread:\n  - .aider/context.md\n  - AGENT_CONTEXT.md\n`
+      `# Aider configuration — managed by persistent\nread:\n  - .aider/context.md\n  - AGENT_CONTEXT.md\n`
     );
     console.log(chalk.green("✓") + " Created .aider.conf.yml with context file references");
   }
@@ -226,7 +226,7 @@ async function setupContinue(agentRoot, block) {
  * Run the extra setup step for a given agent after the integration file is written.
  * @param {string} agentId
  * @param {string} agentRoot
- * @param {string} block - the specflow context block content
+ * @param {string} block - the persistent context block content
  */
 export async function runAgentSetup(agentId, agentRoot, block) {
   const agent = AGENTS[agentId];

@@ -9,9 +9,9 @@ const tools = [
     tagline: "Specs that survive sessions",
     desc: "Structured feature specs that live in your repo. Your agent reads them before every task. When a spec ships, patterns are extracted into SEED.md automatically.",
     commands: [
-      { cmd: 'specflow spec "add payments"', comment: "# create proposal + design + tasks" },
-      { cmd: "specflow spec --validate add-payments", comment: "# check SEED compliance" },
-      { cmd: "specflow spec --archive add-payments", comment: "# extract patterns → SEED" },
+      { cmd: 'persistent spec "add payments"', comment: "# create proposal + design + tasks" },
+      { cmd: "persistent spec --validate add-payments", comment: "# check SEED compliance" },
+      { cmd: "persistent spec --archive add-payments", comment: "# extract patterns → SEED" },
     ],
     files: ["SPECS/SEED.md", "SPECS/active/<slug>/proposal.md", "SPECS/active/<slug>/design.md", "SPECS/active/<slug>/tasks.md"],
     tags: ["#spec", "#decision", "#architecture"],
@@ -24,9 +24,9 @@ const tools = [
     tagline: "Best practices, per library",
     desc: "One markdown file per dependency. Your agent reads Prisma patterns, Stripe integration guides, shadcn conventions — all from .skills/. Updated as your stack evolves.",
     commands: [
-      { cmd: 'specflow skill --search "react auth"', comment: "# find community skills" },
-      { cmd: "specflow skill --create my-patterns", comment: "# from your code + Obsidian" },
-      { cmd: "specflow add-skill supabase/rls-patterns", comment: "# install a specific skill" },
+      { cmd: 'persistent skill --search "react auth"', comment: "# find community skills" },
+      { cmd: "persistent skill --create my-patterns", comment: "# from your code + Obsidian" },
+      { cmd: "persistent add-skill supabase/rls-patterns", comment: "# install a specific skill" },
     ],
     files: [".skills/vercel/nextjs.md", ".skills/stripe/stripe-node.md", ".skills/supabase/rls-patterns.md"],
     tags: ["#pattern", "#skill", "#best-practice"],
@@ -39,12 +39,12 @@ const tools = [
     tagline: "Your notes become agent context",
     desc: "Tag notes in Obsidian — #decision routes to SEED.md, #pattern routes to skills. Archived specs write back to your vault. Your thinking persists across tools.",
     commands: [
-      { cmd: "specflow sync", comment: "# vault ↔ project (bidirectional)" },
-      { cmd: 'specflow sync --pin "Projects/MyApp"', comment: "# always pull a folder" },
-      { cmd: "specflow sync --discover", comment: "# auto-find your vaults" },
+      { cmd: "persistent sync", comment: "# vault ↔ project (bidirectional)" },
+      { cmd: 'persistent sync --pin "Projects/MyApp"', comment: "# always pull a folder" },
+      { cmd: "persistent sync --discover", comment: "# auto-find your vaults" },
     ],
-    files: ["MEMORY/INDEX.md", "vault/specflow/specs/<slug>.md", "vault/specflow/SEED.md"],
-    tags: ["#specflow", "#hot", "#bug", "#workflow"],
+    files: ["MEMORY/INDEX.md", "vault/persistent/specs/<slug>.md", "vault/persistent/SEED.md"],
+    tags: ["#persistent", "#hot", "#bug", "#workflow"],
   },
 ];
 
@@ -58,7 +58,7 @@ export default function Trinity() {
           Three tools. One workflow.
         </h2>
         <p className="text-muted-2 font-mono text-xs sm:text-sm mb-8 sm:mb-12 max-w-lg">
-          specflow orchestrates OpenSpec, Skills.sh, and Obsidian into a single command.
+          persistent orchestrates OpenSpec, Skills.sh, and Obsidian into a single command.
           Each does one thing perfectly. Together they give your agent full context.
         </p>
 
@@ -116,7 +116,7 @@ export default function Trinity() {
               {[
                 { tag: "#spec, #decision, #architecture", color: "#3b82f6" },
                 { tag: "#pattern, #skill, #best-practice", color: "#fbbf24" },
-                { tag: "#specflow, #hot, #bug, #workflow", color: "#a78bfa" },
+                { tag: "#persistent, #hot, #bug, #workflow", color: "#a78bfa" },
               ].map((r) => (
                 <div key={r.tag} className="mb-2 text-xs font-mono" style={{ color: r.color }}>{r.tag}</div>
               ))}

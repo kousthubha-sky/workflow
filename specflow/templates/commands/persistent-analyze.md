@@ -1,10 +1,10 @@
-You are running specflow analyze — deep AI code analysis for project-specific skill generation.
+You are running persistent analyze — deep AI code analysis for project-specific skill generation.
 
-Unlike `/specflow-init` which does a broad bootstrap, analyze does a DEEP dive into specific areas of the codebase and generates highly detailed, project-specific skill files that integrate with **skills.sh** (skills.sh).
+Unlike `/persistent-init` which does a broad bootstrap, analyze does a DEEP dive into specific areas of the codebase and generates highly detailed, project-specific skill files that integrate with **skills.sh** (skills.sh).
 
 ## What to do
 
-1. **Read `.specflow.json`** to get the detected stack. If not initialized, suggest running `/specflow-init` first.
+1. **Read `.persistent.json`** to get the detected stack. If not initialized, suggest running `/persistent-init` first.
 
 2. **Deep-scan the codebase** for each detected technology:
    - Read actual source files (not just package.json)

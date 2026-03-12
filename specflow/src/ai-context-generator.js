@@ -193,7 +193,7 @@ async function generateAgentContext({
   const maxTokens = extractTokenLimit(agentSpec.maxTokens);
 
   const prompt = `
-You are specflow's context generator.
+You are persistent's context generator.
 
 TASK: Generate a spec-compliant AGENT_CONTEXT.md file for an AI coding agent.
 
@@ -258,7 +258,7 @@ async function generateSeedSpec({
   const maxTokens = extractTokenLimit(seedSpec.maxTokens);
 
   const prompt = `
-You are specflow's SEED.md generator.
+You are persistent's SEED.md generator.
 
 TASK: Generate a comprehensive architectural spec (SPECS/SEED.md) for this project.
 
@@ -305,11 +305,11 @@ function generateMemoryIndex() {
 
 ## Sync Information
 - Last sync: ${new Date().toISOString()}
-- Vault: (Obsidian vault path — sync with \`specflow sync\`)
-- Tags: #specflow, #workflow, #decision
+- Vault: (Obsidian vault path — sync with \`persistent sync\`)
+- Tags: #persistent, #workflow, #decision
 
 ## Hot Topics
-(Synced from Obsidian notes with tags: #specflow, #decision, #bug, #pattern)
+(Synced from Obsidian notes with tags: #persistent, #decision, #bug, #pattern)
 
 ## Recent Notes
 (Last 7 days of notes related to this project)
@@ -322,7 +322,7 @@ function generateMemoryIndex() {
 
 ---
 
-Run \`specflow sync\` to update this file from your Obsidian vault.
+Run \`persistent sync\` to update this file from your Obsidian vault.
 `;
 }
 
@@ -470,7 +470,7 @@ async function gatherSkillsContext(projectRoot) {
  * Load generation-spec.json from project
  */
 async function loadGenerationSpec(projectRoot) {
-  const specPath = path.join(projectRoot, ".specflow", "generation-spec.json");
+  const specPath = path.join(projectRoot, ".persistent", "generation-spec.json");
   try {
     const content = await fs.readFile(specPath, "utf-8");
     return JSON.parse(content);

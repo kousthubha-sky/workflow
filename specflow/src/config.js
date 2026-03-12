@@ -1,14 +1,14 @@
 /**
  * config.js
- * Reads/writes .specflow.json in project root — persistent state across commands.
+ * Reads/writes .persistent.json in project root — persistent state across commands.
  */
 
 import fs from "fs/promises";
 import path from "path";
 
-const CONFIG_FILE = ".specflow.json";
+const CONFIG_FILE = ".persistent.json";
 
-/** @returns {Promise<specflowConfig>} */
+/** @returns {Promise<persistentConfig>} */
 export async function readConfig(cwd = process.cwd()) {
   const cfgPath = path.join(cwd, CONFIG_FILE);
   try {
@@ -19,14 +19,14 @@ export async function readConfig(cwd = process.cwd()) {
   }
 }
 
-/** @param {specflowConfig} cfg */
+/** @param {persistentConfig} cfg */
 export async function writeConfig(cfg, cwd = process.cwd()) {
   const cfgPath = path.join(cwd, CONFIG_FILE);
   await fs.writeFile(cfgPath, JSON.stringify(cfg, null, 2), "utf8");
 }
 
 /**
- * @typedef {Object} specflowConfig
+ * @typedef {Object} persistentConfig
  * @property {string}   [agent]          - Detected or forced agent id
  * @property {string}   [agentRoot]      - Absolute path to dir where agent file lives (monorepo root)
  * @property {string[]} [stack]          - Detected stack keys

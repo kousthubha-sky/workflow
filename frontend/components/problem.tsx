@@ -36,7 +36,7 @@ export default function Problem() {
         </h2>
         <p className="text-muted-2 font-mono text-xs sm:text-sm mb-8 sm:mb-12 max-w-lg">
           AI coding agents are powerful but stateless. Every session starts from zero.
-          specflow makes your project the context — persistent, structured, version-controlled.
+          persistent makes your project the context — persistent, structured, version-controlled.
         </p>
 
         {/* 2×2 bordered grid */}
@@ -60,7 +60,7 @@ export default function Problem() {
 
         <div className="text-center mt-12">
           <span className="text-muted font-mono text-xs tracking-wider uppercase">
-            specflow solves this with three tools ↓
+            persistent solves this with three tools ↓
           </span>
         </div>
       </div>

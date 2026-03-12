@@ -3,12 +3,16 @@ import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 
 const ASCII_ART = `
-███████╗██████╗ ███████╗ ██████╗███████╗██╗      ██████╗ ██╗    ██╗
-██╔════╝██╔══██╗██╔════╝██╔════╝██╔════╝██║     ██╔═══██╗██║    ██║
-███████╗██████╔╝█████╗  ██║     █████╗  ██║     ██║   ██║██║ █╗ ██║
-╚════██║██╔═══╝ ██╔══╝  ██║     ██╔══╝  ██║     ██║   ██║██║███╗██║
-███████║██║     ███████╗╚██████╗██║     ███████╗╚██████╔╝╚███╔███╔╝
-╚══════╝╚═╝     ╚══════╝ ╚═════╝╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝`.trim();
+╔════════════════════════════════════════════════════════════════════════════╗
+                                                                            
+    ██████╗ ███████╗██████╗ ███████╗██╗███████╗████████╗███████╗███╗   ██╗ ████████╗
+    ██╔══██╗██╔════╝██╔══██╗██╔════╝██║██╔════╝╚══██╔══╝██╔════╝████╗  ██║ ╚══██╔══╝
+    ██████╔╝█████╗  ██████╔╝███████╗██║███████╗   ██║   █████╗  ██╔██╗ ██║    ██║  
+    ██╔═══╝ ██╔══╝  ██╔══██╗╚════██║██║╚════██║   ██║   ██╔══╝  ██║╚██╗██║    ██║ 
+    ██║     ███████╗██║  ██║███████║██║███████║   ██║   ███████╗██║ ╚████║    ██║ 
+    ╚═╝     ╚══════╝╚═╝  ╚═╝╚══════╝╚═╝╚══════╝   ╚═╝   ╚══════╝╚═╝  ╚═══╝    ╚═╝
+                                                                            
+╚════════════════════════════════════════════════════════════════════════════╝`.trim();
 
 /* Real brand SVGs from Simple Icons */
 const agentIcons = [
@@ -27,7 +31,7 @@ export default function Hero() {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard?.writeText("npx @kousthubha/specflow init");
+    navigator.clipboard?.writeText("npx @kousthubha/persistent init");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -76,7 +80,7 @@ export default function Hero() {
               className="flex items-center gap-2 sm:gap-3 group cursor-pointer w-full sm:w-auto"
             >
               <code className="font-mono text-[10px] sm:text-xs md:text-sm text-text break-all sm:break-normal">
-                npx @kousthubha/specflow init
+                npx @kousthubha/persistent init
               </code>
               {copied ? (
                 <Check size={14} className="text-lime shrink-0" />
@@ -116,7 +120,7 @@ export default function Hero() {
             </a>
           </div>
 
-          {/* ROW 6 — Agent icons marquee (specflow unique addition) */}
+          {/* ROW 6 — Agent icons marquee (persistent unique addition) */}
           <div className="border-t border-border-2">
             <div className="flex items-center justify-between px-6 py-2 border-b border-border-2 bg-bg-2">
               <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">SUPPORTED AGENTS</span>
