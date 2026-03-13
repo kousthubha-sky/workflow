@@ -3,22 +3,10 @@
  *
  * Integration with skills.sh — the open agent skills registry.
  *
- * skills.sh is the real engine. This module:
- *   1. Runs `npx skills add <owner/repo/skill>` for each stack-mapped skill
- *   2. Falls back to built-in markdown files if registry is unreachable
- *   3. Provides search, create, evolve, list operations
- *
- * Skill ID format (skills.sh canonical):  owner/repo/skill-name
- * Examples:
- *   vercel-labs/next-skills/next-best-practices
- *   shadcn/ui/shadcn
- *   anthropics/skills/frontend-design
- *   antfu/skills/vitest
- *
- * CLI:  npx skills add <owner/repo/skill-name>
- *       npx skills add <owner/repo>            (installs default skill)
- *       npx skills search <query>
- *       npx skills list
+ * Install strategy (in order):
+ *   1. Try `npx skills add <pkg>` — uses skills.sh registry (output suppressed)
+ *   2. Fall back to built-in markdown files bundled with persistent
+ *   3. If neither — write a minimal placeholder
  */
 
 import { execSync, spawnSync } from "child_process";
@@ -27,20 +15,17 @@ import path from "path";
 import { fileURLToPath } from "url";
 import chalk from "chalk";
 import ora from "ora";
+import { glob } from "glob";
 
-const __dirname  = path.dirname(fileURLToPath(import.meta.url));
-const MAP_PATH   = path.join(__dirname, "../config/skills-map.json");
+const __dirname   = path.dirname(fileURLToPath(import.meta.url));
+const MAP_PATH    = path.join(__dirname, "../config/skills-map.json");
 const BUILTIN_DIR = path.join(__dirname, "../config/builtin-skills");
-const SKILLS_DIR = ".skills";
+const SKILLS_DIR  = ".skills";
 
 // ─── skills.sh CLI ──────────────────────────────────────────────────────────
 
 let _cliAvailable = null;
 
-/**
- * Check if the skills.sh CLI is available via npx.
- * @returns {Promise<boolean>}
- */
 export async function isSkillsCliAvailable() {
   if (_cliAvailable !== null) return _cliAvailable;
   try {
@@ -53,26 +38,31 @@ export async function isSkillsCliAvailable() {
 }
 
 /**
- * Run `npx skills <args>` in the project directory.
- * Streams output live to user.
+ * Run `npx skills <args>` silently — capture output instead of streaming.
+ * This prevents the "No valid skills found" / "No skills found" messages
+ * from skills.sh flooding the terminal when repos lack SKILL.md files.
+ * We only surface errors if the caller needs them.
  *
  * @param {string[]} args
  * @param {string}   cwd
+ * @returns {{ ok: boolean, stdout: string, stderr: string }}
  */
 function runSkills(args, cwd) {
   const result = spawnSync("npx", ["--yes", "skills", ...args], {
     cwd,
-    stdio: "inherit",
+    stdio: "pipe",   // ← suppressed: skills.sh outputs noise on missing SKILL.md
     timeout: 60_000,
     shell: process.platform === "win32",
   });
-  return { ok: result.status === 0 };
+  return {
+    ok: result.status === 0,
+    stdout: result.stdout?.toString() ?? "",
+    stderr: result.stderr?.toString() ?? "",
+  };
 }
 
 /**
- * Run `npx skills <args>` and capture stdout (for search/list parsing).
- * @param {string[]} args
- * @param {string}   cwd
+ * Run `npx skills <args>` and capture stdout for parsing (search, list).
  */
 function captureSkills(args, cwd) {
   try {
@@ -90,11 +80,6 @@ function captureSkills(args, cwd) {
 
 // ─── Stack → Skills Resolution ───────────────────────────────────────────────
 
-/**
- * Resolve skill IDs for detected stack keys using skills-map.json.
- * @param {string[]} stackKeys
- * @returns {Promise<string[]>}
- */
 export async function resolveSkills(stackKeys) {
   const raw = await fs.readFile(MAP_PATH, "utf8");
   const map = JSON.parse(raw);
@@ -109,13 +94,8 @@ export async function resolveSkills(stackKeys) {
 
 /**
  * Install a list of skills.
- * For each skill:
- *   1. Try `npx skills add <id>` — installs from skills.sh registry
- *   2. Fall back to bundled builtin markdown file
- *   3. Write a placeholder if neither is available
- *
- * @param {string[]} skillIds  - e.g. ["vercel-labs/next-skills/next-best-practices"]
- * @param {string}   cwd       - project root
+ * Tries skills.sh CLI silently, falls back to builtins, then placeholders.
+ * Only shows a clean summary — never raw skills.sh output.
  */
 export async function installSkills(skillIds, cwd) {
   if (!skillIds.length) return { installed: [], builtin: [], placeholder: [] };
@@ -128,16 +108,17 @@ export async function installSkills(skillIds, cwd) {
     spinner.text = `Installing ${chalk.cyan(id)}...`;
 
     if (hasCli) {
-      // skills.sh CLI: `npx skills add owner/repo/skill-name`
+      // Run silently — skills.sh emits "No valid skills found" when repos lack
+      // SKILL.md, but our builtin fallback handles these cases correctly.
       const r = runSkills(["add", id], cwd);
       if (r.ok) {
         result.installed.push(id);
         continue;
       }
-      // CLI failed (likely network issue or skill moved) — try builtin
+      // CLI failed or repo had no SKILL.md → fall through to builtin
     }
 
-    // Builtin fallback
+    // Builtin fallback (bundled markdown files in config/builtin-skills/)
     const builtinContent = await loadBuiltin(id);
     if (builtinContent) {
       await writeLocalSkill(id, builtinContent, cwd);
@@ -145,45 +126,34 @@ export async function installSkills(skillIds, cwd) {
       continue;
     }
 
-    // Placeholder
+    // Placeholder — user can fill in or install via npx skills later
     await writeLocalSkill(id, buildPlaceholder(id), cwd);
     result.placeholder.push(id);
   }
 
   const parts = [];
-  if (result.installed.length)   parts.push(`${result.installed.length} from skills.sh`);
+  if (result.installed.length)   parts.push(`${result.installed.length} registry`);
   if (result.builtin.length)     parts.push(`${result.builtin.length} builtin`);
   if (result.placeholder.length) parts.push(`${result.placeholder.length} placeholder`);
 
   spinner.succeed(`Skills ready: ${parts.join(" · ")}`);
-
-  if (!hasCli && skillIds.length > 0) {
-    console.log(chalk.dim("  Note: skills.sh CLI not available — builtins/placeholders used."));
-    console.log(chalk.dim("  Install: npm install -g skills  (or npx skills will auto-install)"));
-  }
-
   return result;
 }
 
 /**
- * Install a single skill manually.
- * @param {string} skillId
- * @param {string} cwd
- * @param {Object} cfg - .persistent.json config (for updating agent context)
+ * Install a single skill manually (persistent add-skill <id>).
  */
 export async function addSkill(skillId, cwd, cfg) {
   const hasCli = await isSkillsCliAvailable();
 
   if (hasCli) {
-    console.log(chalk.dim(`  npx skills add ${skillId}`));
     const r = runSkills(["add", skillId], cwd);
     if (r.ok) {
-      console.log(chalk.green("✓") + ` Installed ${chalk.cyan(skillId)} (skills.sh)`);
+      console.log(chalk.green("✓") + ` Installed ${chalk.cyan(skillId)} (skills.sh registry)`);
       return;
     }
   }
 
-  // Fallback
   const builtin = await loadBuiltin(skillId);
   if (builtin) {
     await writeLocalSkill(skillId, builtin, cwd);
@@ -192,14 +162,12 @@ export async function addSkill(skillId, cwd, cfg) {
   }
 
   await writeLocalSkill(skillId, buildPlaceholder(skillId), cwd);
-  console.log(chalk.yellow("⚠") + ` ${chalk.cyan(skillId)} — placeholder written (.skills/)`);
+  console.log(chalk.yellow("⚠") + ` ${chalk.cyan(skillId)} — placeholder written`);
   console.log(chalk.dim("  Fill it in or install via: npx skills add " + skillId));
 }
 
 /**
  * Search skills.sh registry.
- * @param {string} query
- * @returns {Promise<Object[]>}
  */
 export async function searchSkills(query) {
   const hasCli = await isSkillsCliAvailable();
@@ -229,7 +197,6 @@ export async function searchSkills(query) {
 
 /**
  * Update all installed skills.
- * @param {string} cwd
  */
 export async function updateSkills(cwd) {
   const hasCli = await isSkillsCliAvailable();
@@ -240,20 +207,12 @@ export async function updateSkills(cwd) {
     return;
   }
 
-  console.log(chalk.yellow("⚠  skills.sh CLI not available — cannot update automatically."));
+  console.log(chalk.yellow("⚠  skills.sh CLI not available."));
   console.log(chalk.dim("  Run: npx skills update"));
 }
 
 /**
  * Create a skill from Obsidian patterns and project code.
- * Writes a local skill file, optionally published to skills.sh.
- *
- * @param {string}   skillId       - e.g. "myteam/my-skills/auth-patterns"
- * @param {string}   cwd
- * @param {Object}   opts
- * @param {Object[]} opts.obsidianNotes - Notes tagged #pattern or #skill
- * @param {string[]} opts.stack
- * @param {Object}   opts.cliAI   - CLI's native AI for generation
  */
 export async function createSkillFromProject(skillId, cwd, opts = {}) {
   const obsidianContent = formatObsidianPatterns(opts.obsidianNotes || [], skillId);
@@ -284,11 +243,6 @@ export async function createSkillFromProject(skillId, cwd, opts = {}) {
 
 /**
  * Evolve an existing skill with new patterns.
- * @param {string}   skillId
- * @param {string}   cwd
- * @param {Object}   opts
- * @param {Object[]} opts.newPatterns - new patterns to add
- * @param {Object}   opts.cliAI
  */
 export async function evolveSkill(skillId, cwd, opts = {}) {
   const skillPath = path.join(cwd, skillIdToPath(skillId));
@@ -314,12 +268,10 @@ export async function evolveSkill(skillId, cwd, opts = {}) {
 
 /**
  * List installed skills.
- * @param {string} cwd
  */
 export async function listInstalledSkills(cwd) {
   const hasCli = await isSkillsCliAvailable();
 
-  // Try skills.sh CLI first
   if (hasCli) {
     const r = captureSkills(["list"], cwd);
     if (r.ok) {
@@ -341,25 +293,19 @@ export async function listInstalledSkills(cwd) {
         if (!file.endsWith(".md")) continue;
         const stat = await fs.stat(path.join(ownerDir, file)).catch(() => null);
         skills.push({
-          id:       `${owner.name}/${file.replace(".md", "")}`,
-          owner:    owner.name,
-          name:     file.replace(".md", ""),
-          source:   "local",
-          version:  stat ? stat.mtime.toISOString().slice(0, 10) : "?",
+          id:      `${owner.name}/${file.replace(".md", "")}`,
+          owner:   owner.name,
+          name:    file.replace(".md", ""),
+          source:  "local",
+          version: stat ? stat.mtime.toISOString().slice(0, 10) : "?",
         });
       }
     }
-  } catch { /* .skills not created yet */ }
+  } catch {}
 
   return skills;
 }
 
-/**
- * Extract skill-worthy patterns from Obsidian notes.
- * Notes tagged #pattern, #skill, #best-practice, #convention.
- * @param {Object[]} notes
- * @returns {Object[]}
- */
 export function extractSkillCandidates(notes) {
   if (!notes?.length) return [];
 
@@ -388,8 +334,6 @@ export function extractSkillCandidates(notes) {
 // ─── Filesystem helpers ──────────────────────────────────────────────────────
 
 function skillIdToPath(id) {
-  // owner/repo/skill-name → .skills/owner/repo--skill-name.md
-  // owner/repo → .skills/owner/repo.md
   const parts = id.split("/");
   if (parts.length === 3) {
     const [owner, repo, skill] = parts;
@@ -409,7 +353,6 @@ async function writeLocalSkill(id, content, cwd) {
 }
 
 async function loadBuiltin(id) {
-  // Try exact match first: owner__repo--skill.md
   const candidates = [
     path.join(BUILTIN_DIR, id.replace(/\//g, "__") + ".md"),
     path.join(BUILTIN_DIR, id.split("/").pop() + ".md"),
@@ -499,7 +442,6 @@ function parseSearchOutput(stdout) {
   for (const line of stdout.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
-    // Format varies: "owner/repo/skill  —  description" or just "owner/repo/skill"
     const match = trimmed.match(/^([\w-]+\/[\w-]+(?:\/[\w-]+)?)\s*(?:[-—]\s*(.*))?$/);
     if (match) {
       const [, id, description] = match;
@@ -516,8 +458,6 @@ function parseSearchOutput(stdout) {
   return results;
 }
 
-// Re-export for backward compat
-export { searchSkills, updateSkills, createSkillFromProject, evolveSkill, listInstalledSkills, extractSkillCandidates };
 export async function discoverSkills(stackKeys, cwd) {
   const mapped = await resolveSkills(stackKeys);
   return { mapped, discovered: [] };

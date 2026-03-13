@@ -33,14 +33,18 @@ import {
 import { readConfig, writeConfig } from "../src/config.js";
 import fs from "fs/promises";
 import path from "path";
+import { createRequire } from "module";
 import chalk from "chalk";
+
+// Node 18-safe JSON loader (avoids `with { type: "json" }` which is Node 20+ only)
+const _require = createRequire(import.meta.url);
 
 program
   .name("persistent")
   .description(
     "Universal AI workflow bootstrap — OpenSpec + skills.sh + Obsidian"
   )
-  .version("0.2.5");
+  .version("0.2.7");
 
 // ── init ─────────────────────────────────────────────────────────────────
 program
@@ -143,7 +147,6 @@ program
     }
 
     // 2. Append OpenSpec context block to MEMORY/INDEX.md
-    //    The agent reads this before running /opsx:new
     const specNotes = result.specNotes || [];
     if (specNotes.length || decisionNotes.length) {
       const contextBlock = buildObsidianContextBlock(specNotes, decisionNotes);
@@ -317,7 +320,9 @@ program
     }
 
     const { resolveSkills } = await import("../src/skills-loader.js");
-    const { default: skillsMap } = await import("../config/skills-map.json", { with: { type: "json" } });
+
+    // Node 18-safe JSON read — `with { type: "json" }` is Node 20+ only
+    const skillsMap = _require("../config/skills-map.json");
 
     const allSkillIds = await resolveSkills(cfg.stack);
     const skillToStack = {};

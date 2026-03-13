@@ -135,7 +135,7 @@ export default function Docs() {
               "Writes context directly into each agent's own file (CLAUDE.md, agents.md, etc.)",
               "Pulls skills from skills.sh for every detected dependency",
               "Optionally connects Obsidian vault",
-              "Initializes SPECS/ structure and SEED.md via OpenSpec",
+              "Initializes SPECS/SEED.md via OpenSpec",
               "Creates /persistent-* slash commands for Claude Code and OpenCode",
               "Saves .persistent.json config",
             ].map((item) => (
@@ -161,24 +161,50 @@ export default function Docs() {
 
           {/* ── spec ── */}
           <H2 id="spec">persistent spec</H2>
-          <P>OpenSpec lifecycle — propose, validate, archive, list, regenerate SEED.</P>
+          <P>Spec lifecycle — OpenSpec handles change files inside your agent, persistent owns SEED.md evolution.</P>
 
-          <Cmd cmd={`persistent spec "add feature name"`} desc="Propose a new spec. Creates SPECS/active/<slug>/ with proposal.md, design.md, tasks.md." />
-          <Cmd cmd="persistent spec --validate <slug>" desc="Validate a spec against SEED.md constraints and generation-spec rules. Catches missing sections, SEED conflicts." />
-          <Cmd cmd="persistent spec --archive <slug>" desc="Archive a completed spec. Extracts patterns from design.md, merges into SEED.md. Moves spec to SPECS/archive/. Writes spec back to Obsidian vault." />
-          <Cmd cmd="persistent spec --list" desc="List all active specs with task completion progress." />
-          <Cmd cmd="persistent spec --seed" desc="Regenerate SEED.md from all archived spec patterns." />
+          {/* OpenSpec slash commands callout */}
+          <div style={{ background: "#0d1117", border: "1px solid #1e3a5f", borderRadius: 6, padding: "14px 18px", marginBottom: 20 }}>
+            <div className="font-mono font-bold" style={{ color: "#60a5fa", fontSize: 12, marginBottom: 8 }}>
+              OpenSpec slash commands — run inside your agent, not in terminal
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              {[
+                ['/opsx:new "feature name"', "Create a new change with id derived from feature name"],
+                ["/opsx:ff", "Fast-forward: generate proposal.md, design.md, tasks.md in one shot"],
+                ["/opsx:apply", "Implement all tasks in tasks.md sequentially"],
+                ["/opsx:archive", "Archive completed change → openspec/changes/archive/"],
+              ].map(([cmd, desc]) => (
+                <div key={cmd} style={{ borderBottom: "1px solid #1e3a5f33", padding: "6px 0", display: "grid", gridTemplateColumns: "220px 1fr", gap: 12 }}>
+                  <code className="font-mono" style={{ color: "#60a5fa", fontSize: 11 }}>{cmd}</code>
+                  <span className="font-mono" style={{ color: "#555", fontSize: 11 }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+            <div className="font-mono" style={{ color: "#444", fontSize: 11 }}>
+              Install: <code style={{ color: "#60a5fa" }}>npm install -g @fission-ai/openspec@latest</code>
+              <span style={{ margin: "0 8px", color: "#333" }}>·</span>
+              Docs: <a href="https://openspec.dev" target="_blank" rel="noopener noreferrer" style={{ color: "#60a5fa" }}>openspec.dev</a>
+            </div>
+          </div>
 
-          <H3>Spec file structure</H3>
-          <Code lang="text">{`SPECS/
-├── SEED.md                          ← architectural DNA (commit)
-├── active/
-│   └── add-razorpay-payments/
-│       ├── proposal.md              ← problem, solution, scope
-│       ├── design.md                ← data model, API, constraints
-│       └── tasks.md                 ← actionable checklist
-└── archive/
-    └── 2026-03-11-add-payments/     ← completed specs`}</Code>
+          <Cmd cmd={`persistent spec "add feature name"`} desc='Shows the /opsx slash commands to use inside your agent for this feature. OpenSpec CLI handles spec creation — not persistent.' />
+          <Cmd cmd="persistent spec --list" desc="List active OpenSpec changes in openspec/changes/ with task completion progress." />
+          <Cmd cmd="persistent spec --seed-evolve <id>" desc="After /opsx:archive in your agent, run this to extract patterns from the archived change's design.md and merge them into SPECS/SEED.md." />
+          <Cmd cmd="persistent spec --seed" desc="Re-initialize SPECS/SEED.md if it doesn't exist or you want a clean slate." />
+          <Cmd cmd="persistent spec --seed-clean" desc="Deduplicate and compress SPECS/SEED.md. Removes repeated pattern lines that accumulate after multiple seed-evolve runs." />
+
+          <H3>File ownership</H3>
+          <Code lang="text">{`# OpenSpec owns (created by /opsx:* commands inside your agent)
+openspec/changes/<id>/
+├── proposal.md              ← problem, solution, scope
+├── design.md                ← data model, API, constraints
+└── tasks.md                 ← actionable checklist
+openspec/changes/archive/    ← after /opsx:archive
+
+# persistent owns (commit these)
+SPECS/
+└── SEED.md                  ← architectural DNA, evolves via --seed-evolve`}</Code>
 
           {/* ── skill ── */}
           <H2 id="skill">persistent skill</H2>

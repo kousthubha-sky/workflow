@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@kousthubha/persistent": "^0.2.4",
+    "@kousthubha/persistent": "^0.2.8",
     "@vercel/analytics": "^2.0.0",
     "lucide-react": "^0.577.0",
     "next": "^16",

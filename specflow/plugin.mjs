@@ -16,6 +16,7 @@
  *   await af.detectAndSetup()
  */
 
+import { createRequire } from "module";
 import { detectStack } from "./src/detect-stack.js";
 import {
   resolveSkills,
@@ -27,7 +28,7 @@ import {
   updateSkills,
   listInstalledSkills,
 } from "./src/skills-loader.js";
-import { detectAgent, updateAgent, writeAgentContext } from "./src/agent-writer.js";
+import { detectAgent, updateAgent, writeAgentContext, patchAgentFile } from "./src/agent-writer.js";
 import { runAgentSetup, AGENTS } from "./src/agent-setup.js";
 import {
   syncObsidian,
@@ -47,6 +48,9 @@ import {
 } from "./src/openspec-integration.js";
 import path from "path";
 import fs from "fs/promises";
+
+// Node 18-safe JSON loader for getMetadata()
+const _require = createRequire(import.meta.url);
 
 /**
  * Main plugin factory
@@ -72,9 +76,6 @@ class PersistentPlugin {
    * This enables spec-driven context generation using the CLI's AI
    * 
    * @param {Object} ai - CLI's native AI instance
-   * Example (Claude Code):
-   *   const codeAI = await claudeCode.getAI(); // Returns Claude instance
-   *   await persistent.registerCliAI(codeAI);
    */
   async registerCliAI(ai) {
     this.cliAI = ai;
@@ -84,16 +85,14 @@ class PersistentPlugin {
   /**
    * Full detection + setup (analogous to `persistent init`)
    * CLI tools call this to bootstrap persistent in a project
-   * 
-   * New: If cliAI is registered, uses spec-driven context generation
    */
   async detectAndSetup(options = {}) {
     const {
-      agents = [], // pre-selected agent list, or auto-detect if empty
+      agents = [],
       obsidianPath = null,
       dryRun = false,
       force = false,
-      useCliAI = false, // Use CLI's native AI for context generation
+      useCliAI = false,
     } = options;
 
     const result = {
@@ -102,7 +101,7 @@ class PersistentPlugin {
       agents: [],
       files: [],
       msg: "",
-      method: "static", // "static" or "ai-driven"
+      method: "static",
     };
 
     try {
@@ -127,7 +126,6 @@ class PersistentPlugin {
 
       // 3. Choose generation method
       if (useCliAI && this.cliAI) {
-        // Use CLI's native AI for spec-driven context generation
         result.method = "ai-driven";
         const aiResult = await generateContextWithAI({
           projectRoot: this.projectRoot,
@@ -140,10 +138,9 @@ class PersistentPlugin {
           result.msg = `AI generation had issues: ${aiResult.errors.join(", ")}`;
           result.files = Object.keys(aiResult.files);
         } else {
-          result.msg = `✓ AI-driven setup complete. Generated ${aiResult.files.length} spec-compliant files.`;
+          result.msg = `✓ AI-driven setup complete. Generated ${Object.keys(aiResult.files).length} spec-compliant files.`;
           result.files = Object.keys(aiResult.files);
 
-          // Write the AI-generated files
           for (const [filename, content] of Object.entries(aiResult.files)) {
             const fullPath = path.join(this.projectRoot, filename);
             await fs.mkdir(path.dirname(fullPath), { recursive: true });
@@ -151,24 +148,31 @@ class PersistentPlugin {
           }
         }
       } else {
-        // Use static template-based generation (original flow)
+        // Static template-based generation
         result.method = "static";
-        
-        // 3a. Resolve and install skills
+
+        // 3a. Resolve and install skills — correct arg order: (skillIds, cwd)
         const skillIds = await resolveSkills(stack);
-        await installSkills(this.projectRoot, skillIds, { force });
+        await installSkills(skillIds, this.projectRoot);
         result.files.push(...skillIds.map((id) => `.skills/${id}.md`));
 
-        // 3b. Write context files for each agent
+        // 3b. Build cfg and patch agent file(s)
+        const cfg = {
+          stack,
+          skills: skillIds,
+          agents: this.selectedAgents,
+          agentRoot: this.projectRoot,
+        };
+
         for (const agentId of this.selectedAgents) {
-          const contextFile = await writeAgentContext(this.projectRoot, agentId, stack, skillIds);
-          if (contextFile) result.files.push(contextFile);
+          const { relPath } = await patchAgentFile(agentId, this.projectRoot, cfg);
+          if (relPath) result.files.push(relPath);
         }
 
         result.msg = `✓ Static setup complete. Updated ${result.files.length} files.`;
       }
 
-      // 4. Sync Obsidian (bidirectional if possible)
+      // 4. Sync Obsidian — correct arg order: (vaultPath, cwd, opts)
       if (obsidianPath) {
         const syncResult = await bidirectionalSync(obsidianPath, this.projectRoot, {
           pinnedFolders: [],
@@ -181,13 +185,17 @@ class PersistentPlugin {
         };
       }
 
-      // 5. Write config
-      await writeConfig(this.projectRoot, {
-        stack,
-        agents: this.selectedAgents,
-        lastSync: new Date().toISOString(),
-        method: result.method,
-      });
+      // 5. Write config — correct arg order: (cfg, cwd)
+      await writeConfig(
+        {
+          stack,
+          agents: this.selectedAgents,
+          lastSync: new Date().toISOString(),
+          method: result.method,
+          obsidianPath: obsidianPath ?? null,
+        },
+        this.projectRoot
+      );
 
       result.success = true;
     } catch (err) {
@@ -199,7 +207,6 @@ class PersistentPlugin {
 
   /**
    * Detect only (no changes)
-   * Returns stack and agent info for the CLI tool to display
    */
   async detect() {
     const { keys: stack } = await detectStack(this.projectRoot);
@@ -214,7 +221,6 @@ class PersistentPlugin {
 
   /**
    * Update context for specific agent(s)
-   * CLI tool calls this when user changes agent or stack
    */
   async updateAgent(agentIds = []) {
     if (!this.detectedStack) {
@@ -223,16 +229,17 @@ class PersistentPlugin {
     }
 
     const skillIds = await resolveSkills(this.detectedStack);
+    const cfg = {
+      stack: this.detectedStack,
+      skills: skillIds,
+      agents: agentIds,
+      agentRoot: this.projectRoot,
+    };
     const updated = [];
 
     for (const agentId of agentIds) {
-      const contextFile = await writeAgentContext(
-        this.projectRoot,
-        agentId,
-        this.detectedStack,
-        skillIds
-      );
-      if (contextFile) updated.push(contextFile);
+      const { relPath } = await patchAgentFile(agentId, this.projectRoot, cfg);
+      if (relPath) updated.push(relPath);
     }
 
     return { updated };
@@ -243,7 +250,8 @@ class PersistentPlugin {
    */
   async syncMemory(obsidianPath) {
     try {
-      await syncObsidian(this.projectRoot, { path: obsidianPath });
+      // Correct arg order: (vaultPath, cwd, opts)
+      await syncObsidian(obsidianPath, this.projectRoot);
       return { success: true, file: "MEMORY/INDEX.md" };
     } catch (err) {
       return { success: false, error: err.message };
@@ -252,19 +260,19 @@ class PersistentPlugin {
 
   /**
    * Get plugin metadata
-   * CLI tools use this for display/logging
    */
   getMetadata() {
+    // Use createRequire (set up at top of file) — safe for Node 18 ESM
+    const pkg = _require("./package.json");
     return {
       name: "persistent",
-      version: require("./package.json").version,
+      version: pkg.version,
       description: "Universal AI workflow bootstrap",
     };
   }
 
   /**
    * Propose a new spec for a feature
-   * Uses openspec CLI when available, falls back to local creation
    */
   async proposeSpec(feature, options = {}) {
     return proposeSpec(feature, this.projectRoot, {
@@ -305,16 +313,10 @@ class PersistentPlugin {
 
   // ─── Skills.sh Lifecycle ────────────────────────────────────────────────
 
-  /**
-   * Search skills.sh registry
-   */
   async searchSkills(query, options = {}) {
     return searchSkills(query, options);
   }
 
-  /**
-   * Discover community skills for detected stack
-   */
   async discoverSkills() {
     if (!this.detectedStack) {
       const { keys: stack } = await detectStack(this.projectRoot);
@@ -323,9 +325,6 @@ class PersistentPlugin {
     return discoverSkills(this.detectedStack, this.projectRoot);
   }
 
-  /**
-   * Create a skill from project patterns + Obsidian notes
-   */
   async createSkill(skillId, options = {}) {
     return createSkillFromProject(skillId, this.projectRoot, {
       cliAI: this.cliAI,
@@ -333,42 +332,26 @@ class PersistentPlugin {
     });
   }
 
-  /**
-   * Evolve an existing skill with new patterns
-   */
   async evolveSkill(skillId, options = {}) {
     return evolveSkill(skillId, this.projectRoot, {
       cliAI: this.cliAI,
     });
   }
 
-  /**
-   * Update all installed skills via skills.sh
-   */
   async updateSkills() {
     return updateSkills(this.projectRoot);
   }
 
   // ─── Obsidian Context Layer ─────────────────────────────────────────────
 
-  /**
-   * Full bidirectional Obsidian sync
-   * Pull notes → route by tags → push specs/skills/SEED back
-   */
   async syncBidirectional(obsidianPath) {
     return bidirectionalSync(obsidianPath, this.projectRoot);
   }
 
-  /**
-   * Get Obsidian notes routed to OpenSpec (#spec, #decision)
-   */
   async getSpecNotes(obsidianPath) {
     return getOpenSpecNotes(obsidianPath);
   }
 
-  /**
-   * Get Obsidian notes routed to skills (#pattern, #skill)
-   */
   async getSkillNotes(obsidianPath) {
     return getSkillNotes(obsidianPath);
   }

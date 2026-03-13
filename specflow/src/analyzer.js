@@ -45,7 +45,7 @@ const SKILL_FILE_PATTERNS = {
 const FALLBACK_PATTERNS = ["**/*.ts", "**/*.tsx"];
 
 async function readBuiltin(skillId) {
-  const filename = skillId.replace("/", "__") + ".md";
+  const filename = skillId.replace(/\//g, "__") + ".md";
   try { return await fs.readFile(path.join(BUILTIN_DIR, filename), "utf8"); }
   catch { return null; }
 }
@@ -166,7 +166,20 @@ export async function analyzeAndGenerateSkills(skillIds, stackKeys, cwd, opts = 
   for (let i = 0; i < skillIds.length; i++) {
     const skillId  = skillIds[i];
     const stackKey = stackKeys[i];
-    const skillPath = path.join(cwd, SKILLS_DIR, skillId.replace("/", "/") + ".md");
+
+    // Build skill output path — mirror skills-integration.js skillIdToPath logic
+    const parts = skillId.split("/");
+    let skillRelPath;
+    if (parts.length === 3) {
+      const [owner, repo, skill] = parts;
+      skillRelPath = path.join(SKILLS_DIR, owner, `${repo}--${skill}.md`);
+    } else if (parts.length === 2) {
+      const [owner, name] = parts;
+      skillRelPath = path.join(SKILLS_DIR, owner, `${name}.md`);
+    } else {
+      skillRelPath = path.join(SKILLS_DIR, `${skillId}.md`);
+    }
+    const skillPath = path.join(cwd, skillRelPath);
 
     if (!opts.force) {
       try {
@@ -183,7 +196,8 @@ export async function analyzeAndGenerateSkills(skillIds, stackKeys, cwd, opts = 
       const builtin = await readBuiltin(skillId);
       const content = await generateSkillWithAI(skillId, stackKey, files, builtin, client);
 
-      await fs.mkdir(path.join(cwd, SKILLS_DIR, skillId.split("/")[0]), { recursive: true });
+      // Create full directory path (not just first segment)
+      await fs.mkdir(path.dirname(skillPath), { recursive: true });
       await fs.writeFile(skillPath, content, "utf8");
 
       results.generated.push(skillId);

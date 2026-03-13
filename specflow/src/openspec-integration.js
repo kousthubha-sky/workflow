@@ -10,23 +10,6 @@
  *   3. Build SEED.md (persistent-specific: accumulated architectural DNA)
  *   4. Route Obsidian context into the agent's context window BEFORE
  *      the user runs OpenSpec slash commands (/opsx:new, /opsx:ff, etc.)
- *
- * OpenSpec structure (owned by openspec, not us):
- *   openspec/specs/<feature>/spec.md      ← living requirements
- *   openspec/changes/<id>/proposal.md     ← proposed change
- *   openspec/changes/<id>/design.md       ← technical decisions
- *   openspec/changes/<id>/tasks.md        ← implementation checklist
- *   openspec/changes/<id>/specs/          ← spec deltas
- *
- * OpenSpec slash commands (run inside your agent, not here):
- *   /opsx:new <feature>    — create a change
- *   /opsx:ff               — fast-forward: generate proposal + design + tasks
- *   /opsx:apply            — implement tasks
- *   /opsx:archive          — archive completed change
- *   /opsx:onboard          — first-time setup walkthrough
- *
- * SEED.md (persistent-specific, complements OpenSpec):
- *   SPECS/SEED.md          — architectural DNA that evolves with each archive
  */
 
 import { execSync, spawnSync } from "child_process";
@@ -38,30 +21,61 @@ import ora from "ora";
 const SEED_FILE = path.join("SPECS", "SEED.md");
 const SPECS_DIR = "SPECS";
 
-// ─── OpenSpec CLI Detection + Install ───────────────────────────────────────
+// ─── OpenSpec CLI Detection ──────────────────────────────────────────────────
+
+// Cache which method worked so runOpenSpec doesn't re-probe every call
+let _openspecMethod = null; // "global" | "npx" | null
 
 /**
- * Check if openspec is available globally.
- * @returns {{ available: boolean, version: string|null }}
+ * Check if openspec is available — globally or via npx.
+ * Tries global first (fast), then npx (auto-installs if needed).
+ * @returns {{ available: boolean, version: string|null, method: "global"|"npx"|null }}
  */
 export async function checkOpenSpec() {
+  if (_openspecMethod) {
+    return { available: true, version: null, method: _openspecMethod };
+  }
+
+  // 1. Try global install (fast path)
   try {
-    const out = execSync("openspec --version", { stdio: "pipe", timeout: 8_000, encoding: "utf8" });
-    return { available: true, version: out.trim() };
+    const out = execSync("openspec --version", {
+      stdio: "pipe",
+      timeout: 8_000,
+      encoding: "utf8",
+    });
+    _openspecMethod = "global";
+    return { available: true, version: out.trim(), method: "global" };
+  } catch {}
+
+  // 2. Try via npx — installs @fission-ai/openspec on first run
+  try {
+    const out = execSync("npx --yes @fission-ai/openspec@latest --version", {
+      stdio: "pipe",
+      timeout: 30_000,
+      encoding: "utf8",
+    });
+    _openspecMethod = "npx";
+    return { available: true, version: out.trim(), method: "npx" };
   } catch {
-    return { available: false, version: null };
+    return { available: false, version: null, method: null };
   }
 }
 
 /**
  * Run an openspec CLI command in the project.
+ * Uses global `openspec` if available, otherwise `npx @fission-ai/openspec@latest`.
  * @param {string[]} args  - e.g. ["init"] or ["update"]
  * @param {string}   cwd   - project root
  */
 function runOpenSpec(args, cwd) {
-  const result = spawnSync("openspec", args, {
+  const useNpx = _openspecMethod === "npx";
+  const [bin, binArgs] = useNpx
+    ? ["npx", ["--yes", "@fission-ai/openspec@latest", ...args]]
+    : ["openspec", args];
+
+  const result = spawnSync(bin, binArgs, {
     cwd,
-    stdio: "inherit",   // stream output live to user
+    stdio: "inherit",
     timeout: 60_000,
     shell: process.platform === "win32",
   });
@@ -80,21 +94,19 @@ function runOpenSpec(args, cwd) {
  * @param {Object[]} opts.decisionNotes - Obsidian #decision notes to seed SEED.md
  */
 export async function initOpenSpec(cwd, opts = {}) {
-  const { available, version } = await checkOpenSpec();
+  const { available, version, method } = await checkOpenSpec();
 
   if (!available) {
-    console.log(chalk.yellow("\n⚠  OpenSpec not found globally."));
-    console.log(chalk.dim("  Install: ") + chalk.cyan("npm install -g @fission-ai/openspec@latest"));
-    console.log(chalk.dim("  Then re-run: ") + chalk.cyan("persistent init\n"));
+    console.log(chalk.yellow("\n⚠  OpenSpec not found globally or via npx."));
+    console.log(chalk.dim("  Install manually: ") + chalk.cyan("npm install -g @fission-ai/openspec@latest"));
     console.log(chalk.dim("  Skipping OpenSpec setup — continuing with SEED.md only.\n"));
   } else {
-    console.log(chalk.green("✓") + ` OpenSpec ${chalk.dim(version)}`);
-    const spinner = ora("Running openspec init...").start();
+    const label = method === "npx" ? chalk.dim("(via npx)") : chalk.dim(version ?? "");
+    console.log(chalk.green("✓") + ` OpenSpec ${label}`);
 
-    // Check if openspec is already initialized (openspec/ dir exists)
+    const spinner = ora("Running openspec init...").start();
     const alreadyInit = await fileExists(path.join(cwd, "openspec"));
     if (alreadyInit) {
-      // Update instead of init to avoid overwriting existing structure
       const result = runOpenSpec(["update"], cwd);
       spinner.succeed(result.ok ? "openspec update done" : "openspec update had warnings (see above)");
     } else {
@@ -113,9 +125,9 @@ export async function initOpenSpec(cwd, opts = {}) {
  * @param {string} cwd
  */
 export async function updateOpenSpec(cwd) {
-  const { available } = await checkOpenSpec();
+  const { available, method } = await checkOpenSpec();
   if (!available) {
-    console.log(chalk.dim("  OpenSpec not installed — skipping update."));
+    console.log(chalk.dim("  OpenSpec not available — skipping update."));
     console.log(chalk.dim("  Install: npm install -g @fission-ai/openspec@latest"));
     return;
   }
@@ -129,12 +141,6 @@ export async function updateOpenSpec(cwd) {
 
 /**
  * Ensure SEED.md exists. Creates it with Obsidian decisions if provided.
- * SEED.md is persistent's architectural DNA file — NOT part of OpenSpec.
- *
- * @param {string}   cwd
- * @param {Object}   opts
- * @param {string[]} opts.stack         - Detected stack keys
- * @param {Object[]} opts.decisionNotes - Obsidian #decision notes
  */
 export async function ensureSeed(cwd, opts = {}) {
   const seedPath = path.join(cwd, SEED_FILE);
@@ -142,12 +148,10 @@ export async function ensureSeed(cwd, opts = {}) {
 
   const exists = await fileExists(seedPath);
   if (exists) {
-    // Already exists — merge in any new Obsidian decisions
     await mergeDecisionsIntoSeed(seedPath, opts.decisionNotes || []);
     return;
   }
 
-  // Create fresh SEED.md
   const content = buildSeedTemplate(opts.stack || [], opts.decisionNotes || []);
   await fs.writeFile(seedPath, content, "utf8");
   console.log(chalk.green("✓") + " SPECS/SEED.md created");
@@ -155,10 +159,6 @@ export async function ensureSeed(cwd, opts = {}) {
 
 /**
  * Merge Obsidian #decision notes into SEED.md without duplicating.
- * Called after every bidirectional sync.
- *
- * @param {string}   seedPath
- * @param {Object[]} decisionNotes - { rel: string, content: string }[]
  */
 export async function mergeDecisionsIntoSeed(seedPath, decisionNotes) {
   if (!decisionNotes.length) return;
@@ -166,7 +166,6 @@ export async function mergeDecisionsIntoSeed(seedPath, decisionNotes) {
   const current = await fs.readFile(seedPath, "utf8").catch(() => "");
 
   const toAdd = decisionNotes.filter((note) => {
-    // Don't add if first line of note already appears in SEED
     const firstLine = (note.content || "").split("\n").find((l) => l.trim())?.trim();
     return firstLine && !current.includes(firstLine);
   });
@@ -187,19 +186,12 @@ export async function mergeDecisionsIntoSeed(seedPath, decisionNotes) {
 
 /**
  * Evolve SEED.md after an OpenSpec change is archived.
- * Reads the archived change folder and extracts patterns.
- *
- * @param {string} cwd
- * @param {string} changeId - e.g. "add-dark-mode" or "2025-01-23-add-dark-mode"
  */
 export async function evolveSeedFromArchive(cwd, changeId) {
   const seedPath = path.join(cwd, SEED_FILE);
-
-  // Read the archived change (OpenSpec puts it in openspec/changes/archive/<id>/)
   const archiveBase = path.join(cwd, "openspec", "changes", "archive");
   let changeDir = path.join(archiveBase, changeId);
 
-  // If exact match not found, try prefix match
   if (!(await fileExists(changeDir))) {
     try {
       const entries = await fs.readdir(archiveBase, { withFileTypes: true });
@@ -219,9 +211,7 @@ export async function evolveSeedFromArchive(cwd, changeId) {
     return;
   }
 
-  // Extract patterns from design decisions
   const patterns = extractPatternsFromDesign(design || "");
-
   if (!patterns.length) {
     console.log(chalk.dim(`  No extractable patterns in ${changeId}`));
     return;
@@ -235,9 +225,7 @@ export async function evolveSeedFromArchive(cwd, changeId) {
 }
 
 /**
- * Clean/deduplicate SEED.md — merge repeated pattern sections.
- * Called by `persistent spec --seed-clean`.
- * @param {string} cwd
+ * Clean/deduplicate SEED.md.
  */
 export async function cleanSeed(cwd) {
   const seedPath = path.join(cwd, SEED_FILE);
@@ -247,7 +235,6 @@ export async function cleanSeed(cwd) {
     return;
   }
 
-  // Collect all pattern lines across sections, deduplicate
   const lines = content.split("\n");
   const seen = new Set();
   const deduped = [];
@@ -259,17 +246,14 @@ export async function cleanSeed(cwd) {
       deduped.push(line);
       continue;
     }
-
     if (inPatternSection && line.startsWith("- ")) {
       const key = line.trim().toLowerCase();
-      if (seen.has(key)) continue; // skip duplicate
+      if (seen.has(key)) continue;
       seen.add(key);
     }
-
     deduped.push(line);
   }
 
-  // Remove empty "Patterns from:" sections
   const filtered = deduped.join("\n").replace(
     /\n## Patterns from: [^\n]+\n(?=\n## |\n*$)/g,
     "\n"
@@ -282,7 +266,6 @@ export async function cleanSeed(cwd) {
 
 /**
  * List OpenSpec changes (active + archived).
- * @param {string} cwd
  */
 export async function listActiveSpecs(cwd) {
   const changesDir = path.join(cwd, "openspec", "changes");
@@ -310,12 +293,6 @@ export async function listActiveSpecs(cwd) {
   return specs;
 }
 
-/**
- * Print OpenSpec slash command reference for the user's agent.
- * This is how users actually interact with OpenSpec — not through persistent.
- *
- * @param {string} agentId
- */
 export function printOpenSpecWorkflow(agentId) {
   console.log(chalk.bold("\nOpenSpec workflow (run inside your agent):"));
   console.log(chalk.dim('  /opsx:new "feature name"   — start a new change'));
@@ -323,22 +300,8 @@ export function printOpenSpecWorkflow(agentId) {
   console.log(chalk.dim("  /opsx:apply                — implement tasks"));
   console.log(chalk.dim("  /opsx:archive              — archive completed change → evolves SEED.md"));
   console.log(chalk.dim("  /opsx:onboard              — first-time walkthrough\n"));
-
-  if (agentId === "cursor" || agentId === "windsurf") {
-    console.log(chalk.dim("  Tip: OpenSpec slash commands are registered in your agent automatically.\n"));
-  }
 }
 
-// ─── Context helpers for Obsidian → OpenSpec bridge ────────────────────────
-
-/**
- * Format Obsidian spec/decision notes as a context block to prepend
- * to MEMORY/INDEX.md so the agent reads them before running /opsx:new.
- *
- * @param {Object[]} specNotes     - Obsidian notes tagged #spec
- * @param {Object[]} decisionNotes - Obsidian notes tagged #decision or #architecture
- * @returns {string}               - Markdown block to prepend
- */
 export function buildObsidianContextBlock(specNotes, decisionNotes) {
   if (!specNotes.length && !decisionNotes.length) return "";
 
@@ -362,11 +325,7 @@ export function buildObsidianContextBlock(specNotes, decisionNotes) {
     lines.push("");
   }
 
-  lines.push(
-    "> These come from your Obsidian vault. Reference them when running `/opsx:new`.",
-    ""
-  );
-
+  lines.push("> These come from your Obsidian vault. Reference them when running `/opsx:new`.", "");
   return lines.join("\n");
 }
 
@@ -445,39 +404,30 @@ async function safeRead(p) {
   try { return await fs.readFile(p, "utf8"); } catch { return null; }
 }
 
-// ─── Backward-compat exports (spec-runner.js calls these) ───────────────────
+// ─── Backward-compat exports ─────────────────────────────────────────────────
 
-export { listActiveSpecs as listActiveSpecs };
-
-/**
- * Backward-compatible: called from spec-runner.js's runSpec().
- * Now just prints OpenSpec workflow instructions since OpenSpec CLI owns spec creation.
- */
 export async function proposeSpec(feature, cwd, opts = {}) {
   const { available } = await checkOpenSpec();
 
   if (!available) {
-    console.log(chalk.red("✗ OpenSpec not installed."));
+    console.log(chalk.red("✗ OpenSpec not available."));
     console.log(chalk.dim("  Install: npm install -g @fission-ai/openspec@latest"));
-    console.log(chalk.dim("  Then run openspec init in your project.\n"));
+    console.log(chalk.dim("  Or it will auto-install via npx on next run.\n"));
     return { slug: null };
   }
 
-  // Feature slug for reference
   const slug = feature.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50);
 
-  console.log(chalk.bold("\nOpenSpec is installed. To create this spec:"));
+  console.log(chalk.bold("\nOpenSpec is available. To create this spec:"));
   console.log(chalk.cyan(`  /opsx:new "${feature}"`));
   console.log(chalk.dim("  Then: /opsx:ff  to generate proposal + design + tasks"));
   console.log(chalk.dim("  Then: /opsx:apply  to implement"));
   console.log(chalk.dim("  Then: /opsx:archive  to archive and evolve SEED.md\n"));
 
-  // If Obsidian context exists, remind user
   const memoryPath = path.join(cwd, "MEMORY", "INDEX.md");
   const hasMemory = await fileExists(memoryPath);
   if (hasMemory) {
-    console.log(chalk.dim("  Tip: Your agent will read MEMORY/INDEX.md for Obsidian context."));
-    console.log(chalk.dim("  Run: persistent sync  to refresh Obsidian context first.\n"));
+    console.log(chalk.dim("  Tip: Run `persistent sync` to refresh Obsidian context first.\n"));
   }
 
   return { slug, method: "openspec-cli" };
@@ -486,23 +436,18 @@ export async function proposeSpec(feature, cwd, opts = {}) {
 export async function validateSpec(slug, cwd) {
   const { available } = await checkOpenSpec();
   if (!available) {
-    return { valid: false, issues: ["OpenSpec not installed"], warnings: [] };
+    return { valid: false, issues: ["OpenSpec not available"], warnings: [] };
   }
-
-  // OpenSpec handles its own validation through the agent slash commands
-  console.log(chalk.dim(`  Validation for OpenSpec changes is done via your agent:`));
-  console.log(chalk.dim(`  Review the spec files in openspec/changes/${slug}/`));
+  console.log(chalk.dim(`  Validation: review files in openspec/changes/${slug}/`));
   return { valid: true, issues: [], warnings: [] };
 }
 
 export async function archiveSpecWithEvolution(slug, cwd, opts = {}) {
   const { available } = await checkOpenSpec();
-
   if (!available) {
-    console.log(chalk.red("✗ OpenSpec not installed — cannot archive."));
+    console.log(chalk.red("✗ OpenSpec not available — cannot archive."));
     return { success: false };
   }
-
   console.log(chalk.dim("  Archive via your agent: /opsx:archive"));
   console.log(chalk.dim("  Then evolve SEED.md: persistent spec --seed-evolve " + slug));
   return { success: true };
