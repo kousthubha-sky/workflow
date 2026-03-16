@@ -353,10 +353,25 @@ async function writeLocalSkill(id, content, cwd) {
 }
 
 async function loadBuiltin(id) {
+  // Try multiple name patterns to find a matching builtin skill file
+  const lastPart = id.split("/").pop();
   const candidates = [
-    path.join(BUILTIN_DIR, id.replace(/\//g, "__") + ".md"),
-    path.join(BUILTIN_DIR, id.split("/").pop() + ".md"),
+    path.join(BUILTIN_DIR, id.replace(/\//g, "__") + ".md"),   // full id with __
+    path.join(BUILTIN_DIR, lastPart + ".md"),                   // last segment
   ];
+
+  // Also try matching by stack key: look up which stack key maps to this skill id
+  // This allows builtin files named "nextjs.md" to match skill id "vercel-labs/next-skills/next-best-practices"
+  try {
+    const raw = await fs.readFile(MAP_PATH, "utf8");
+    const map = JSON.parse(raw);
+    for (const [stackKey, ids] of Object.entries(map)) {
+      if (ids.includes(id)) {
+        candidates.push(path.join(BUILTIN_DIR, stackKey + ".md"));
+      }
+    }
+  } catch {}
+
   for (const p of candidates) {
     try { return await fs.readFile(p, "utf8"); } catch {}
   }

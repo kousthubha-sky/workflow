@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \":*)",
+      "Bash(node \"../specflow/bin/persistent.js\" init --dry-run)",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)",
+      "Bash(npx persistent:*)"
+    ]
+  }
+}

@@ -9,13 +9,13 @@ const groups = [
       {
         cmd: "persistent init",
         flags: "[--agent <id>] [--obsidian <path>] [--dry-run]",
-        desc: "Full bootstrap. Detects stack, runs openspec init, installs skills.sh skills, patches agent file, connects Obsidian vault.",
+        desc: "Full bootstrap. Detects stack, analyzes codebase for patterns/constraints, installs skills.sh skills, patches agent file with real context, connects Obsidian vault.",
         example: "persistent init --obsidian ~/Documents/MyVault",
       },
       {
         cmd: "persistent update",
         flags: "[--agent <id>]",
-        desc: "Re-patch agent file from current config + run openspec update to refresh slash commands. Run after stack changes.",
+        desc: "Re-analyze project, re-patch agent file + run openspec update. Extracts fresh patterns/constraints from your codebase and merges SEED.md content into the agent context block.",
         example: "persistent update --agent cursor",
       },
     ],

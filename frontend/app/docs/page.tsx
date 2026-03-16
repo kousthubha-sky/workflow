@@ -131,11 +131,12 @@ export default function Docs() {
           <ul style={{ paddingLeft: 20, marginBottom: 16 }}>
             {[
               "Reads package.json / pyproject.toml / go.mod / Cargo.toml → detects stack",
-              "Prompts multi-select: which agents do you use? (pre-selects detected one)",
-              "Writes context directly into each agent's own file (CLAUDE.md, agents.md, etc.)",
-              "Pulls skills from skills.sh for every detected dependency",
+              "Prompts agent selection (auto-detects from project structure)",
+              "Analyzes codebase for patterns, constraints, anti-patterns, and file structure",
+              "Pulls skills from skills.sh — falls back to bundled builtins for top 10 stacks",
+              "Writes SPECS/SEED.md with real project-specific architectural DNA",
+              "Patches agent file with extracted context (patterns, constraints, structure)",
               "Optionally connects Obsidian vault",
-              "Initializes SPECS/SEED.md via OpenSpec",
               "Creates /persistent-* slash commands for Claude Code and OpenCode",
               "Saves .persistent.json config",
             ].map((item) => (
@@ -218,7 +219,7 @@ SPECS/
           <Cmd cmd="persistent add-skill <owner/name>" desc="Install a specific skill directly. Falls back: registry → builtin → placeholder." />
 
           <H3>Install priority</H3>
-          <P>For each skill: <G>skills.sh registry</G> → <A>bundled builtin</A> → <M>placeholder file</M>. Manifest tracked at .skills/.manifest.json.</P>
+          <P>For each skill: <G>skills.sh registry</G> → <A>bundled builtin (10 stacks: Next.js, React, Prisma, Supabase, Tailwind, TypeScript, Clerk, Stripe, Drizzle, shadcn)</A> → <M>placeholder file</M>. Manifest tracked at .skills/.manifest.json.</P>
 
           {/* ── sync ── */}
           <H2 id="sync">persistent sync</H2>
@@ -266,11 +267,11 @@ persistent analyze --only stripe/node    # target specific dependencies`}</Code>
           <H3>How it differs from init</H3>
           <ul style={{ paddingLeft: 20, marginBottom: 16 }}>
             {[
-              "init → broad bootstrap, 2-3 minutes total",
-              "analyze → deep code tracing, 5-10 minutes per skill, much more detailed",
-              "init → generic best practices",
-              "analyze → your project's actual patterns and gotchas",
-              "init → recommended first, regenerate rarely",
+              "init → fast bootstrap with codebase analysis, under 1 minute",
+              "analyze → deep AI code tracing, 5-10 minutes per skill, much more detailed",
+              "init → extracts patterns from code structure, README, config files",
+              "analyze → AI reads your actual source code for nuanced patterns and gotchas",
+              "init → recommended first, re-run with persistent update",
               "analyze → recommended after stack is mature, run on demand",
             ].map((item) => (
               <li key={item} className="font-mono mb-1" style={{ color: "#555", fontSize: 12.5, lineHeight: 1.8 }}>

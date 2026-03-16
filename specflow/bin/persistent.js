@@ -62,12 +62,43 @@ program
 // ── update ────────────────────────────────────────────────────────────────
 program
   .command("update")
-  .description("Re-patch agent file + run openspec update")
+  .description("Re-analyze project, re-patch agent file + run openspec update")
   .option("--agent <n>", "Target agent override")
   .action(async (opts) => {
+    const cwd = process.cwd();
     const cfg = await readConfig();
+
+    // Re-extract project context so agent file gets fresh patterns
+    const { extractProjectContext } = await import("../src/context-extractor.js");
+    const { extractSeedContent } = await import("../src/context-extractor.js");
+
+    console.log(chalk.dim("  Analyzing project..."));
+    const extractedContext = await extractProjectContext(cwd, cfg.stack || []);
+
+    // Also pull patterns from existing SEED.md
+    const seedContent = await extractSeedContent(cwd);
+    if (seedContent.patterns.length) {
+      extractedContext.patterns = [
+        ...seedContent.patterns,
+        ...(extractedContext.patterns || []),
+      ];
+    }
+    if (seedContent.constraints.length) {
+      extractedContext.constraints = [
+        ...seedContent.constraints,
+        ...(extractedContext.constraints || []),
+      ];
+    }
+    if (seedContent.antiPatterns.length) {
+      extractedContext.antiPatterns = [
+        ...seedContent.antiPatterns,
+        ...(extractedContext.antiPatterns || []),
+      ];
+    }
+
+    cfg.extractedContext = extractedContext;
     await updateAgent(cfg, opts.agent);
-    await updateOpenSpec(process.cwd());
+    await updateOpenSpec(cwd);
   });
 
 // ── sync ──────────────────────────────────────────────────────────────────

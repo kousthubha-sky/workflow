@@ -67,6 +67,6 @@ export async function seedCleanCmd() {
   await cleanSeed(cwd);
 }
 
-export async function initSpecs(cwd, stack) {
-  await initOpenSpec(cwd, { stack });
+export async function initSpecs(cwd, stack, extractedContext) {
+  await initOpenSpec(cwd, { stack, extractedContext });
 }

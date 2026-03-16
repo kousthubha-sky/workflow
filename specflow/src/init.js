@@ -10,6 +10,7 @@
 import path from "path";
 import chalk from "chalk";
 import prompts from "prompts";
+import ora from "ora";
 import { detectStack } from "./detect-stack.js";
 import { resolveSkills, installSkills } from "./skills-loader.js";
 import { detectAgent, detectAgentWithEnv, updateAgent, writeAgentContext, AGENT_FILE_MAP } from "./agent-writer.js";
@@ -18,6 +19,7 @@ import { syncObsidian, discoverVaults } from "./obsidian-bridge.js";
 import { initSpecs } from "./spec-runner.js";
 import { writeConfig } from "./config.js";
 import { supportsSlashCommands, COMMAND_NAMES } from "./command-writer.js";
+import { extractProjectContext } from "./context-extractor.js";
 
 const SKIP_SIGNALS     = new Set(["", "skip", "no", "n", "none", "later"]);
 const DISCOVER_SIGNALS = new Set(["discover", "--discover", "persistent sync --discover", "sync --discover"]);
@@ -169,24 +171,45 @@ export async function init(opts = {}) {
   const { installed, builtin, placeholder } = await installSkills(resolvedSkills, cwd);
   cfg.skills = resolvedSkills;
 
-  // ── 7. Write AGENT_CONTEXT.md only for generic (no agent detected) ────────
+  // ── 7. Extract project context (the intelligence layer) ─────────────────
+  const ctxSpinner = ora("Analyzing project...").start();
+  const extractedContext = await extractProjectContext(cwd, stack);
+  cfg.extractedContext = extractedContext;
+
+  const ctxCount = (extractedContext.patterns?.length ?? 0)
+    + (extractedContext.constraints?.length ?? 0)
+    + (extractedContext.antiPatterns?.length ?? 0);
+  if (ctxCount > 0) {
+    ctxSpinner.succeed(
+      `Project analyzed: ${extractedContext.patterns.length} patterns, ` +
+      `${extractedContext.constraints.length} constraints, ` +
+      `${extractedContext.antiPatterns.length} anti-patterns`
+    );
+  } else {
+    ctxSpinner.succeed("Project analyzed (no code patterns detected yet)");
+  }
+  if (extractedContext.readme) {
+    console.log(chalk.dim(`  Project: ${extractedContext.readme.slice(0, 80)}...`));
+  }
+
+  // ── 8. Write AGENT_CONTEXT.md only for generic (no agent detected) ────────
   // When a specific agent is selected, that agent's file has all the context
   if (selectedAgent === "generic") {
     await writeAgentContext(cfg, cwd);
   }
 
-  // ── 8. Init SPECS/ ────────────────────────────────────────────────────────
-  await initSpecs(cwd, stack);
+  // ── 9. Init SPECS/ ────────────────────────────────────────────────────────
+  await initSpecs(cwd, stack, extractedContext);
   console.log(chalk.green("✓") + " SPECS/ initialized");
 
-  // ── 9. Sync Obsidian ──────────────────────────────────────────────────────
+  // ── 10. Sync Obsidian ─────────────────────────────────────────────────────
   if (obsidianPath) {
     obsidianSynced = await syncObsidian(obsidianPath, cwd, { pinnedFolders: [] });
     if (obsidianSynced) cfg.lastSync = new Date().toISOString();
     else                cfg.obsidianPath = null;
   }
 
-  // ── 10. Set up selected agent ─────────────────────────────────────────────
+  // ── 11. Set up selected agent ────────────────────────────────────────────
   console.log("");
   const { block } = await import("./agent-writer.js").then(m => ({
     block: m.buildBlock(cfg)
@@ -199,8 +222,11 @@ export async function init(opts = {}) {
   // Run any extra setup for this agent
   await runAgentSetup(selectedAgent, agentRoot, block);
 
-  // ── 11. Save config ────────────────────────────────────────────────────────
-  await writeConfig(cfg);
+  // ── 12. Save config ─────────────────────────────────────────────────────
+  // Don't persist extractedContext in .persistent.json — it's regenerated each run
+  const persistCfg = { ...cfg };
+  delete persistCfg.extractedContext;
+  await writeConfig(persistCfg);
   console.log(chalk.green("\n✓") + " Config saved to .persistent.json\n");
 
   // ── Summary ───────────────────────────────────────────────────────────────
@@ -208,7 +234,7 @@ export async function init(opts = {}) {
   if (selectedAgent === "generic") {
     console.log(`  ${chalk.green("AGENT_CONTEXT.md")}     universal context`);
   }
-  console.log(`  ${chalk.green("SPECS/SEED.md")}        fill in decisions + patterns`);
+  console.log(`  ${chalk.green("SPECS/SEED.md")}        ${ctxCount > 0 ? `${ctxCount} project-specific entries` : "fill in decisions + patterns"}`);
   if (obsidianSynced)
     console.log(`  ${chalk.green("MEMORY/INDEX.md")}      synced from Obsidian`);
   const file = AGENT_FILE_MAP[selectedAgent] ?? "AGENT_CONTEXT.md";

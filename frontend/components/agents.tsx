@@ -18,7 +18,7 @@ export default function Agents() {
         <h2 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold text-text mb-3">Works with every agent.</h2>
         <p className="text-muted-2 font-mono text-xs sm:text-sm mb-8 sm:mb-12 max-w-lg">
           persistent auto-detects which agent you use from your project structure.
-          The init prompt lets you select multiple — it patches each one.
+          Same context block injected into every agent file — switch agents without losing context.
         </p>
 
         <div className="border border-border mb-8 sm:mb-12 overflow-x-auto">
@@ -51,23 +51,21 @@ export default function Agents() {
             <div className="terminal-dot bg-[#ff5f57]" />
             <div className="terminal-dot bg-[#febc2e]" />
             <div className="terminal-dot bg-[#28c840]" />
-            <span className="text-muted text-xs ml-2">persistent init — multi-agent setup</span>
+            <span className="text-muted text-xs ml-2">persistent init — agent context output</span>
           </div>
           <div className="terminal-body">
             <div><span className="text-muted-2">Auto-detected: </span><span className="text-text">Claude Code</span></div>
-            <div className="mt-2"><span className="text-accent">?</span><span className="text-text"> Which AI agents do you use?</span></div>
-            <div className="text-muted text-xs mt-1 ml-2">(space to select, enter to confirm)</div>
-            <div className="mt-2 space-y-0.5">
-              <div><span className="text-lime">◉</span> <span className="text-text">Claude Code</span>         <span className="text-muted text-xs">CLAUDE.md</span></div>
-              <div><span className="text-muted">◯</span> <span className="text-muted-2">GitHub Copilot</span>    <span className="text-muted text-xs">.github/copilot-instructions.md</span></div>
-              <div><span className="text-lime">◉</span> <span className="text-text">Cursor</span>              <span className="text-muted text-xs">.cursor/rules/persistent.mdc</span></div>
-              <div><span className="text-muted">◯</span> <span className="text-muted-2">Windsurf (Codeium)</span><span className="text-muted text-xs">.windsurfrules</span></div>
-              <div><span className="text-muted">◯</span> <span className="text-muted-2">OpenCode</span>          <span className="text-muted text-xs">agents.md</span></div>
+            <div className="mt-2"><span className="text-accent">?</span><span className="text-text"> Select your AI agent:</span></div>
+            <div className="mt-1 space-y-0.5">
+              <div><span className="text-lime">❯</span> <span className="text-text">Claude Code</span>         <span className="text-muted text-xs">CLAUDE.md</span></div>
+              <div><span className="text-muted"> </span> <span className="text-muted-2">Cursor</span>              <span className="text-muted text-xs">.cursor/rules/persistent.mdc</span></div>
+              <div><span className="text-muted"> </span> <span className="text-muted-2">GitHub Copilot</span>    <span className="text-muted text-xs">.github/copilot-instructions.md</span></div>
+              <div><span className="text-muted"> </span> <span className="text-muted-2">Windsurf</span>          <span className="text-muted text-xs">.windsurfrules</span></div>
             </div>
-            <div className="mt-3"><span className="text-lime">✓</span> <span className="text-text">Agents: </span><span className="text-text">Claude Code, Cursor</span></div>
-            <div><span className="text-muted text-xs ml-4">claude-code → CLAUDE.md</span></div>
-            <div><span className="text-muted text-xs ml-4">cursor → .cursor/rules/persistent.mdc</span></div>
-            <div className="mt-2"><span className="text-lime">✓</span> <span className="text-text">Both agents patched with identical context</span></div>
+            <div className="mt-3"><span className="text-lime">✓</span> <span className="text-text">Agent: Claude Code</span></div>
+            <div className="mt-1"><span className="text-[#60a5fa]">◐</span> <span className="text-[#60a5fa]">Analyzing project...</span></div>
+            <div><span className="text-lime">✓</span> <span className="text-text">12 patterns, 5 constraints extracted</span></div>
+            <div><span className="text-lime">✓</span> <span className="text-text">CLAUDE.md patched [claude-code]</span></div>
           </div>
         </div>
       </div>

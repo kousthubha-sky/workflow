@@ -116,6 +116,7 @@ export async function initOpenSpec(cwd, opts = {}) {
   }
 
   // Always set up SEED.md — this is persistent's own contribution
+  // Pass extractedContext so SEED.md gets real project content
   await ensureSeed(cwd, opts);
 }
 
@@ -152,7 +153,11 @@ export async function ensureSeed(cwd, opts = {}) {
     return;
   }
 
-  const content = buildSeedTemplate(opts.stack || [], opts.decisionNotes || []);
+  const content = buildSeedTemplate(
+    opts.stack || [],
+    opts.decisionNotes || [],
+    opts.extractedContext || null,
+  );
   await fs.writeFile(seedPath, content, "utf8");
   console.log(chalk.green("✓") + " SPECS/SEED.md created");
 }
@@ -331,11 +336,40 @@ export function buildObsidianContextBlock(specNotes, decisionNotes) {
 
 // ─── SEED template ──────────────────────────────────────────────────────────
 
-function buildSeedTemplate(stack, decisionNotes) {
+function buildSeedTemplate(stack, decisionNotes, extractedContext) {
+  const ctx = extractedContext || {};
+
+  // ── Project Overview ────────────────────────────────────────────────
+  const readmeSection = ctx.readme
+    ? `## Project Overview\n${ctx.readme}\n`
+    : "";
+
+  // ── Stack ───────────────────────────────────────────────────────────
   const stackSection = stack.length
     ? `## Stack\n${stack.map((s) => `- ${s}`).join("\n")}\n`
     : "";
 
+  // ── File Structure ──────────────────────────────────────────────────
+  const structureSection = ctx.fileStructure?.length
+    ? `## File Structure\n${ctx.fileStructure.map((s) => `- ${s}`).join("\n")}\n`
+    : "";
+
+  // ── Patterns (from code analysis) ──────────────────────────────────
+  const codePatterns = ctx.patterns?.length
+    ? ctx.patterns.map((p) => `- ${p}`).join("\n")
+    : "<!-- Run: persistent spec --seed-evolve <change-id> to add patterns -->";
+
+  // ── Anti-Patterns ──────────────────────────────────────────────────
+  const codeAntiPatterns = ctx.antiPatterns?.length
+    ? ctx.antiPatterns.map((p) => `- ${p}`).join("\n")
+    : "<!-- Add anti-patterns as you discover them -->";
+
+  // ── Constraints ────────────────────────────────────────────────────
+  const codeConstraints = ctx.constraints?.length
+    ? ctx.constraints.map((p) => `- ${p}`).join("\n")
+    : "<!-- Add hard constraints here -->";
+
+  // ── Decisions (from Obsidian) ──────────────────────────────────────
   const decisionsSection = decisionNotes.length
     ? `## Decisions (from Obsidian)\n${decisionNotes
         .slice(0, 10)
@@ -343,25 +377,29 @@ function buildSeedTemplate(stack, decisionNotes) {
         .join("\n")}\n`
     : "";
 
+  // ── Existing Docs ──────────────────────────────────────────────────
+  const docsSection = ctx.existingDocs?.length
+    ? `## References\n${ctx.existingDocs.map((d) => `- ${d}`).join("\n")}\n`
+    : "## References\n<!-- Docs, ADRs, related OpenSpec specs -->\n";
+
   return `# SEED — Architectural DNA
 > Maintained by persistent · evolves as OpenSpec changes are archived
 > Read by your agent before every coding session
 
+${readmeSection}
 ${stackSection}
+${structureSection}
 ## Patterns
-<!-- Best practices learned from completed OpenSpec changes -->
-<!-- Run: persistent spec --seed-evolve <change-id> to update -->
+${codePatterns}
 
 ## Anti-Patterns
-<!-- What NOT to do — learned from past mistakes -->
+${codeAntiPatterns}
 
 ## Constraints
-<!-- Hard rules all implementations must follow -->
+${codeConstraints}
 
 ${decisionsSection}
-## References
-<!-- Docs, ADRs, related OpenSpec specs -->
-
+${docsSection}
 ---
 How this file evolves:
 1. You complete + archive an OpenSpec change (/opsx:archive)

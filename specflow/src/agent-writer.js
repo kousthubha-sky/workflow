@@ -82,18 +82,49 @@ export async function detectAgentWithEnv(startDir) {
 /**
  * Build the persistent context block injected into the agent file.
  *
- * References the REAL tools:
- *   - openspec/    ← owned by @fission-ai/openspec CLI
- *   - .skills/     ← owned by skills.sh CLI
- *   - MEMORY/      ← synced from Obsidian vault by persistent
- *   - SPECS/SEED.md ← persistent's architectural DNA layer
+ * Now includes REAL project-specific content:
+ *   - Actual patterns extracted from code analysis
+ *   - Real constraints from the project
+ *   - Skill-derived best practices
+ *   - File pointers for deeper context
+ *
+ * Falls back to file-pointer-only mode if no extracted context available.
  */
 export function buildBlock(cfg) {
   const stack     = (cfg.stack   ?? []).join("|") || "unknown";
   const skills    = (cfg.skills  ?? []).join(",") || "none";
   const lastSync  = cfg.lastSync ? cfg.lastSync.slice(0, 10) : "never";
-  const obsidian  = cfg.obsidianPath ?? "not-configured";
   const agents    = (cfg.agents ?? [cfg.agent]).filter(Boolean).join(",");
+  const ctx       = cfg.extractedContext ?? {};
+
+  // ── Project summary (from README) ─────────────────────────────────
+  const projectLine = ctx.readme
+    ? `> project: ${ctx.readme.slice(0, 200)}\n`
+    : "";
+
+  // ── Critical patterns (top 7 from code analysis + skills) ─────────
+  const allPatterns = [
+    ...(ctx.patterns ?? []),
+    ...(ctx.skillPatterns ?? []).slice(0, 3),
+  ];
+  const patternsSection = allPatterns.length > 0
+    ? `\n## critical-patterns\n${allPatterns.slice(0, 7).map(p => `- ${p}`).join("\n")}\n`
+    : "";
+
+  // ── Hard constraints ──────────────────────────────────────────────
+  const constraintsSection = ctx.constraints?.length
+    ? `\n## constraints\n${ctx.constraints.slice(0, 5).map(c => `- ${c}`).join("\n")}\n`
+    : "";
+
+  // ── Anti-patterns ─────────────────────────────────────────────────
+  const antiPatternsSection = ctx.antiPatterns?.length
+    ? `\n## anti-patterns\n${ctx.antiPatterns.slice(0, 5).map(a => `- ${a}`).join("\n")}\n`
+    : "";
+
+  // ── File structure (compact) ──────────────────────────────────────
+  const structureSection = ctx.fileStructure?.length
+    ? `\n## structure\n${ctx.fileStructure.slice(0, 8).map(s => `- ${s}`).join("\n")}\n`
+    : "";
 
   return `${BLOCK_START}
 # persistent-ctx
@@ -101,38 +132,26 @@ export function buildBlock(cfg) {
 > agents:[${agents}]
 > skills:[${skills}]
 > obsidian-sync:${lastSync}
-
-## context-files (read before every task)
+${projectLine}${patternsSection}${constraintsSection}${antiPatternsSection}${structureSection}
+## context-files (read for full detail)
 | file | purpose |
 |------|---------|
+| \`SPECS/SEED.md\` | Full architectural DNA — patterns, anti-patterns, decisions |
 | \`MEMORY/INDEX.md\` | Hot notes from Obsidian vault — personal context |
-| \`SPECS/SEED.md\` | Architectural DNA — patterns, anti-patterns, constraints |
 | \`.skills/\` | Skills from skills.sh — one file per library |
-| \`openspec/specs/\` | Living requirements (managed by OpenSpec) |
-| \`openspec/changes/\` | Proposed + active changes (managed by OpenSpec) |
+| \`openspec/changes/\` | Active changes (managed by OpenSpec) |
 
 ## workflow
 Before starting any feature:
-1. Run \`persistent sync\` — refresh Obsidian context
-2. Read \`MEMORY/INDEX.md\` — check hot notes
-3. Read \`SPECS/SEED.md\` — respect patterns and constraints
-4. Use \`/opsx:new "feature"\` in your agent — create an OpenSpec change
-5. Use \`/opsx:ff\` — generate proposal + design + tasks
-6. Use \`/opsx:apply\` — implement
-7. Use \`/opsx:archive\` — archive when done
+1. Read \`SPECS/SEED.md\` — respect patterns and constraints
+2. Read \`MEMORY/INDEX.md\` — check hot notes (run \`persistent sync\` to refresh)
+3. Check \`.skills/\` — library-specific best practices
+4. Use \`/opsx:new "feature"\` → \`/opsx:ff\` → \`/opsx:apply\` → \`/opsx:archive\`
 
-## skills-sh
-.skills/ contains context from skills.sh registry.
-Add skills: \`persistent add-skill owner/repo/skill-name\`
-Search:     \`persistent skill --search <query>\`
-
-## obsidian
-vault:${obsidian}
-refresh: \`persistent sync\`
-tag notes #spec → OpenSpec context
-tag notes #decision → SEED.md
-tag notes #pattern → skills creation
-tag notes #persistent → always in MEMORY/INDEX.md
+## cmds
+\`persistent sync\`       — refresh Obsidian context
+\`persistent update\`     — re-generate this file after project changes
+\`persistent add-skill\`  — install skills from skills.sh registry
 ${BLOCK_END}`;
 }
 
